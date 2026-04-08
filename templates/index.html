@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Family Dashboard</title>
+<style>
+/* ============================================================
+   BASE / RESET / DARK THEME
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-card-alt: #1c2a4a;
+  --bg-input: #0f3460;
+  --text: #e0e0e0;
+  --text-dim: #8892a4;
+  --text-bright: #ffffff;
+  --accent: #4fc3f7;
+  --accent-dim: #29668a;
+  --green: #66bb6a;
+  --orange: #ffa726;
+  --red: #ef5350;
+  --visitor: #ce93d8;
+  --border: #2a3a5c;
+  --radius: 12px;
+  --row-min: 56px;
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+html, body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Tab bar at top */
+.tab-bar {
+  display: flex;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  height: 56px;
+}
+
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 15px;
+  font-family: var(--font);
+  padding: 0 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: rgba(79, 195, 247, 0.06);
+}
+.tab-btn:active { background: rgba(79,195,247,0.12); }
+.tab-icon { font-size: 20px; }
+
+/* Tab content area */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.tab-panel {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px 80px;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-panel.active { display: block; }
+
+/* ============================================================
+   CARDS / SECTIONS
+   ============================================================ */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+h2.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 20px 0 10px;
+}
+h2.section-title:first-child { margin-top: 0; }
+
+/* ============================================================
+   TWO COLUMN (Today + This Week)
+   ============================================================ */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  height: 100%;
+}
+.col { min-width: 0; }
+
+/* ============================================================
+   WEATHER
+   ============================================================ */
+.weather-current {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.weather-icon-big { font-size: 48px; }
+.weather-temp { font-size: 42px; font-weight: 700; color: var(--text-bright); }
+.weather-details { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+.weather-dress {
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 15px;
+  color: var(--orange);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.hourly-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+.hourly-item {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 6px 8px;
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  min-width: 64px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.hourly-item .h-temp { font-size: 16px; font-weight: 600; color: var(--text); }
+.hourly-item .h-icon { font-size: 18px; }
+
+/* 7-day forecast */
+.daily-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  gap: 8px;
+}
+.daily-row:last-child { border-bottom: none; }
+.daily-day { width: 70px; font-weight: 600; color: var(--text); }
+.daily-icon { font-size: 20px; width: 30px; text-align: center; }
+.daily-temps { flex: 1; }
+.daily-hi { color: var(--text-bright); font-weight: 600; }
+.daily-lo { color: var(--text-dim); }
+.daily-rain { color: var(--accent); width: 50px; text-align: right; }
+
+/* ============================================================
+   EVENT LISTS
+   ============================================================ */
+.event-item {
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent-dim);
+  margin-bottom: 6px;
+  border-radius: 0 8px 8px 0;
+  background: var(--bg-card-alt);
+}
+.event-item.has-guests { border-left-color: var(--visitor); }
+.event-time { font-size: 12px; color: var(--accent); font-weight: 600; }
+.event-summary { font-size: 15px; color: var(--text-bright); margin-top: 2px; }
+.event-location { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.event-guests { font-size: 11px; color: var(--visitor); margin-top: 4px; }
+.event-day-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 10px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   CHORE / LIST ROWS
+   ============================================================ */
+.list-row {
+  display: flex;
+  align-items: center;
+  min-height: var(--row-min);
+  padding: 8px 14px;
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  gap: 12px;
+}
+.list-row:active { background: rgba(79,195,247,0.1); }
+.list-row.completed { opacity: 0.45; }
+.list-row.completed .list-text { text-decoration: line-through; }
+.list-row.fading { opacity: 0; transition: opacity 0.4s; }
+
+.list-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-dim);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.list-row.completed .list-check {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.list-text {
+  flex: 1;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.list-delete {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.list-row.show-delete .list-delete { display: flex; }
+
+/* Add button */
+.add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--row-min);
+  background: var(--bg-input);
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 16px;
+  cursor: pointer;
+  gap: 8px;
+  margin-top: 4px;
+  font-family: var(--font);
+}
+.add-btn:active { background: rgba(79,195,247,0.1); }
+.add-icon { font-size: 24px; font-weight: 700; }
+
+/* ============================================================
+   WEEKEND INTENTIONS
+   ============================================================ */
+.intention-field {
+  width: 100%;
+  min-height: 44px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 10px 12px;
+  font-family: var(--font);
+  resize: none;
+  margin-top: 6px;
+}
+.intention-field:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.intention-label {
+  font-size: 14px;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* ============================================================
+   CALENDAR TAB
+   ============================================================ */
+.cal-view-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.cal-toggle-btn {
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-dim);
+  font-size: 14px;
+  font-family: var(--font);
+  cursor: pointer;
+}
+.cal-toggle-btn.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Month grid */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.month-nav-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.month-name { font-size: 18px; font-weight: 600; color: var(--text-bright); }
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.month-header {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-dim);
+  padding: 4px;
+}
+.month-day {
+  min-height: 80px;
+  background: var(--bg-card-alt);
+  border-radius: 4px;
+  padding: 4px;
+  overflow-y: auto;
+}
+.month-day.empty { background: transparent; }
+.month-day.today { border: 2px solid var(--accent); }
+.month-day-num { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 2px; }
+.month-event {
+  font-size: 10px;
+  padding: 2px 4px;
+  margin-bottom: 1px;
+  border-radius: 3px;
+  background: var(--accent-dim);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.month-event.has-guests { background: rgba(206,147,216,0.3); }
+
+/* Week view */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.week-col {
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 300px;
+}
+.week-col.today { border: 2px solid var(--accent); }
+.week-col-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.week-event {
+  font-size: 11px;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  border-left: 2px solid var(--accent);
+  color: var(--text);
+}
+.week-event.has-guests { border-left-color: var(--visitor); }
+.week-event-time { font-size: 10px; color: var(--accent); }
+
+/* Visitors card */
+.visitor-card {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--visitor);
+  gap: 12px;
+}
+.visitor-countdown {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--visitor);
+  min-width: 48px;
+  text-align: center;
+}
+.visitor-countdown small { font-size: 10px; font-weight: 400; display: block; }
+.visitor-info { flex: 1; }
+.visitor-name { font-size: 15px; color: var(--text-bright); }
+.visitor-date { font-size: 12px; color: var(--text-dim); }
+
+/* ============================================================
+   MONEY TAB
+   ============================================================ */
+.budget-bar-container {
+  margin-bottom: 14px;
+}
+.budget-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.budget-name { color: var(--text); font-weight: 600; }
+.budget-amounts { color: var(--text-dim); }
+.budget-bar {
+  height: 24px;
+  background: var(--bg-input);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+.budget-fill {
+  height: 100%;
+  border-radius: 12px;
+  transition: width 0.5s ease;
+  min-width: 4px;
+}
+.budget-fill.ok { background: var(--green); }
+.budget-fill.warn { background: var(--orange); }
+.budget-fill.over { background: var(--red); }
+
+.bill-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  gap: 12px;
+}
+.bill-due {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 60px;
+}
+.bill-name { flex: 1; font-size: 15px; color: var(--text); }
+.bill-amount { font-size: 16px; font-weight: 600; color: var(--text-bright); }
+
+.simplifi-btn {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #000;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  margin-top: 10px;
+}
+.simplifi-btn:active { opacity: 0.85; }
+
+.placeholder-box {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   HOME TAB / SETTINGS
+   ============================================================ */
+.settings-row {
+  display: flex;
+  align-items: center;
+  min-height: var(--row-min);
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.settings-label {
+  font-size: 14px;
+  color: var(--text-dim);
+  min-width: 140px;
+}
+.settings-input {
+  flex: 1;
+  height: 44px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 0 12px;
+  font-family: var(--font);
+}
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: var(--font);
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:active { opacity: 0.85; }
+.btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:active { background: rgba(255,255,255,0.05); }
+
+.status-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot.connected { background: var(--green); }
+.status-dot.disconnected { background: var(--red); }
+
+/* ============================================================
+   MUSIC SECTION
+   ============================================================ */
+.music-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg-card-alt);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-size: 16px;
+  text-decoration: none;
+  border: 1px solid var(--border);
+}
+.music-link:active { background: rgba(79,195,247,0.1); }
+
+/* ============================================================
+   UNDO TOAST
+   ============================================================ */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.toast {
+  background: #333;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  animation: toast-in 0.3s ease;
+}
+.toast.hiding { animation: toast-out 0.3s ease forwards; }
+.toast-undo {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+}
+@keyframes toast-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(20px); } }
+
+/* ============================================================
+   IN-APP KEYBOARD
+   ============================================================ */
+.kb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 900;
+  display: none;
+}
+.kb-overlay.active { display: block; }
+
+.kb-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35vh;
+  background: #2a2a3e;
+  border-top: 2px solid var(--border);
+  z-index: 950;
+  display: none;
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+}
+.kb-sheet.active { display: flex; }
+
+.kb-input-preview {
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border-radius: 8px;
+  font-size: 18px;
+  color: var(--text-bright);
+  min-height: 44px;
+  border: 1px solid var(--accent);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.kb-input-cursor { border-right: 2px solid var(--accent); animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { border-color: transparent; } }
+
+.kb-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex: 1;
+}
+.kb-key {
+  flex: 1;
+  max-width: 72px;
+  background: #3a3a4e;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 18px;
+  font-family: var(--font);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+.kb-key:active { background: #4a4a5e; }
+.kb-key.wide { max-width: none; flex: 2; }
+.kb-key.accent { background: var(--accent); color: #000; font-weight: 700; }
+.kb-key.accent:active { background: #3aa8d8; }
+.kb-key.dark { background: #555; color: #fff; }
+
+/* ============================================================
+   SEE-ALL LINK
+   ============================================================ */
+.see-all {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 16px;
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.see-all:active { background: rgba(79,195,247,0.1); }
+
+/* ============================================================
+   LOADING / EMPTY
+   ============================================================ */
+.loading { text-align: center; padding: 30px; color: var(--text-dim); }
+.empty-state { text-align: center; padding: 20px; color: var(--text-dim); font-size: 14px; }
+
+/* ============================================================
+   SCROLLBAR (touch-friendly thin)
+   ============================================================ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ============================================================
+       TAB BAR
+       ============================================================ -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="today" onclick="switchTab('today')">
+      <span class="tab-icon">&#9788;</span> Today
+    </button>
+    <button class="tab-btn" data-tab="lists" onclick="switchTab('lists')">
+      <span class="tab-icon">&#9776;</span> Lists
+    </button>
+    <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')">
+      <span class="tab-icon">&#128197;</span> Calendar
+    </button>
+    <button class="tab-btn" data-tab="home" onclick="switchTab('home')">
+      <span class="tab-icon">&#9881;</span> Home
+    </button>
+    <button class="tab-btn" data-tab="money" onclick="switchTab('money')">
+      <span class="tab-icon">&#128176;</span> Money
+    </button>
+  </nav>
+
+  <div class="tab-content">
+
+    <!-- ============================================================
+         TAB 1: TODAY + THIS WEEK
+         ============================================================ -->
+    <div class="tab-panel active" id="panel-today">
+      <div class="two-col">
+        <!-- LEFT: TODAY -->
+        <div class="col" id="today-left">
+          <!-- Weather Current -->
+          <div class="card" id="weather-current-card">
+            <div class="card-title">Weather Now</div>
+            <div id="weather-current" class="loading">Loading weather...</div>
+          </div>
+
+          <!-- Hourly Forecast -->
+          <div class="card">
+            <div class="card-title">Next 8 Hours</div>
+            <div id="hourly-forecast" class="hourly-strip loading">Loading...</div>
+          </div>
+
+          <!-- Today's Events -->
+          <div class="card">
+            <div class="card-title">Today's Schedule</div>
+            <div id="today-events" class="loading">Loading calendar...</div>
+          </div>
+
+          <!-- Daily Chores -->
+          <div class="card">
+            <div class="card-title">Daily Chores</div>
+            <div id="today-chores"></div>
+          </div>
+
+          <!-- Music -->
+          <div class="card">
+            <div class="card-title">Music</div>
+            <a class="music-link" href="https://music.youtube.com" target="_blank" rel="noopener">
+              &#127925; Open YouTube Music
+            </a>
+          </div>
+        </div>
+
+        <!-- RIGHT: THIS WEEK -->
+        <div class="col" id="today-right">
+          <!-- 7-Day Forecast -->
+          <div class="card">
+            <div class="card-title">7-Day Forecast</div>
+            <div id="daily-forecast"></div>
+          </div>
+
+          <!-- This Week's Events -->
+          <div class="card">
+            <div class="card-title">This Week</div>
+            <div id="week-events" class="loading">Loading...</div>
+          </div>
+
+          <!-- Weekend Intentions -->
+          <div class="card">
+            <div class="card-title">Weekend Intentions</div>
+            <div class="intention-label">Saturday</div>
+            <textarea class="intention-field" id="intention-sat" rows="2" placeholder="What's the plan?"
+                      oninput="saveIntention('sat',this.value)"></textarea>
+            <div class="intention-label">Sunday</div>
+            <textarea class="intention-field" id="intention-sun" rows="2" placeholder="What's the plan?"
+                      oninput="saveIntention('sun',this.value)"></textarea>
+          </div>
+
+          <!-- Talk About Preview -->
+          <div class="card">
+            <div class="card-title">Things to Talk About</div>
+            <div id="talk-preview"></div>
+            <span class="see-all" onclick="switchTab('lists')">See all &rarr;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 2: LISTS
+         ============================================================ -->
+    <div class="tab-panel" id="panel-lists">
+      <h2 class="section-title">Daily Chores</h2>
+      <div id="list-daily-chores"></div>
+      <button class="add-btn" onclick="openAddItem('daily_chores')">
+        <span class="add-icon">+</span> Add chore
+      </button>
+
+      <h2 class="section-title">Weekly Chores</h2>
+      <div id="list-weekly-chores"></div>
+      <button class="add-btn" onclick="openAddItem('weekly_chores')">
+        <span class="add-icon">+</span> Add chore
+      </button>
+
+      <h2 class="section-title">Things to Talk About</h2>
+      <div id="list-things-to-talk-about"></div>
+      <button class="add-btn" onclick="openAddItem('things_to_talk_about')">
+        <span class="add-icon">+</span> Add topic
+      </button>
+
+      <h2 class="section-title">Home Projects</h2>
+      <div id="list-home-projects"></div>
+      <button class="add-btn" onclick="openAddItem('home_projects')">
+        <span class="add-icon">+</span> Add project
+      </button>
+
+      <h2 class="section-title">Vacation Planning</h2>
+      <div id="list-vacation-planning"></div>
+      <button class="add-btn" onclick="openAddItem('vacation_planning')">
+        <span class="add-icon">+</span> Add item
+      </button>
+    </div>
+
+    <!-- ============================================================
+         TAB 3: CALENDAR
+         ============================================================ -->
+    <div class="tab-panel" id="panel-calendar">
+      <div class="cal-view-toggle">
+        <button class="cal-toggle-btn active" data-view="agenda" onclick="setCalView('agenda')">Agenda</button>
+        <button class="cal-toggle-btn" data-view="week" onclick="setCalView('week')">Week</button>
+        <button class="cal-toggle-btn" data-view="month" onclick="setCalView('month')">Month</button>
+      </div>
+
+      <div id="cal-agenda" class="loading">Loading calendar...</div>
+      <div id="cal-week" style="display:none;"></div>
+      <div id="cal-month" style="display:none;"></div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Upcoming Visitors</div>
+        <div id="upcoming-visitors"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 4: HOME
+         ============================================================ -->
+    <div class="tab-panel" id="panel-home">
+      <h2 class="section-title">Manage Chores</h2>
+      <div class="card">
+        <div class="card-title">Daily Chores</div>
+        <div id="manage-daily"></div>
+        <button class="add-btn" onclick="openAddItem('daily_chores')">
+          <span class="add-icon">+</span> Add daily chore
+        </button>
+      </div>
+      <div class="card">
+        <div class="card-title">Weekly Chores</div>
+        <div id="manage-weekly"></div>
+        <button class="add-btn" onclick="openAddItem('weekly_chores')">
+          <span class="add-icon">+</span> Add weekly chore
+        </button>
+      </div>
+
+      <h2 class="section-title">Settings</h2>
+      <div class="card">
+        <div class="settings-row">
+          <span class="settings-label">Location</span>
+          <input class="settings-input" id="setting-location" type="text" placeholder="City, State">
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Latitude</span>
+          <input class="settings-input" id="setting-lat" type="number" step="0.0001">
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Longitude</span>
+          <input class="settings-input" id="setting-lon" type="number" step="0.0001">
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Budget Sheet ID</span>
+          <input class="settings-input" id="setting-sheet" type="text" placeholder="Google Sheet ID">
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Google Account</span>
+          <span id="google-status"></span>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+          <button class="btn btn-outline" onclick="refreshAll()">Refresh All Data</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 5: MONEY
+         ============================================================ -->
+    <div class="tab-panel" id="panel-money">
+      <h2 class="section-title">Budget Summary</h2>
+      <div class="card" id="budget-card">
+        <div id="budget-bars" class="loading">Loading budget data...</div>
+      </div>
+
+      <h2 class="section-title">Bills Due This Week</h2>
+      <div class="card">
+        <div id="bills-list"></div>
+      </div>
+
+      <a class="simplifi-btn" href="https://app.simplifimoney.com" target="_blank" rel="noopener">
+        Open Simplifi
+      </a>
+
+      <div class="placeholder-box" style="margin-top: 16px;">
+        <strong>Coming Soon: Actual Budget</strong><br>
+        This section will be replaced by Actual Budget (self-hosted, open-source)<br>
+        once the migration from Simplifi is complete.
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Google Sheet Setup</div>
+        <div style="font-size:13px; color:var(--text-dim); line-height:1.7;">
+          Create a Google Sheet with two tabs:<br>
+          <strong>Tab 1: "Budget"</strong> — Columns: Category | Budget | Spent<br>
+          <strong>Tab 2: "Bills"</strong> — Columns: Bill Name | Amount | Due Date (YYYY-MM-DD)<br>
+          Copy the Sheet ID from the URL and paste it in Home &rarr; Settings.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-content -->
+</div><!-- /app -->
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- KEYBOARD OVERLAY -->
+<div class="kb-overlay" id="kb-overlay" onclick="closeKeyboard()"></div>
+<div class="kb-sheet" id="kb-sheet">
+  <div class="kb-input-preview" id="kb-preview"><span class="kb-input-cursor"></span></div>
+  <div class="kb-row">
+    <button class="kb-key" onclick="kbType('q')">q</button>
+    <button class="kb-key" onclick="kbType('w')">w</button>
+    <button class="kb-key" onclick="kbType('e')">e</button>
+    <button class="kb-key" onclick="kbType('r')">r</button>
+    <button class="kb-key" onclick="kbType('t')">t</button>
+    <button class="kb-key" onclick="kbType('y')">y</button>
+    <button class="kb-key" onclick="kbType('u')">u</button>
+    <button class="kb-key" onclick="kbType('i')">i</button>
+    <button class="kb-key" onclick="kbType('o')">o</button>
+    <button class="kb-key" onclick="kbType('p')">p</button>
+  </div>
+  <div class="kb-row">
+    <button class="kb-key" onclick="kbType('a')">a</button>
+    <button class="kb-key" onclick="kbType('s')">s</button>
+    <button class="kb-key" onclick="kbType('d')">d</button>
+    <button class="kb-key" onclick="kbType('f')">f</button>
+    <button class="kb-key" onclick="kbType('g')">g</button>
+    <button class="kb-key" onclick="kbType('h')">h</button>
+    <button class="kb-key" onclick="kbType('j')">j</button>
+    <button class="kb-key" onclick="kbType('k')">k</button>
+    <button class="kb-key" onclick="kbType('l')">l</button>
+  </div>
+  <div class="kb-row">
+    <button class="kb-key dark" id="kb-shift" onclick="kbShift()">&#8679;</button>
+    <button class="kb-key" onclick="kbType('z')">z</button>
+    <button class="kb-key" onclick="kbType('x')">x</button>
+    <button class="kb-key" onclick="kbType('c')">c</button>
+    <button class="kb-key" onclick="kbType('v')">v</button>
+    <button class="kb-key" onclick="kbType('b')">b</button>
+    <button class="kb-key" onclick="kbType('n')">n</button>
+    <button class="kb-key" onclick="kbType('m')">m</button>
+    <button class="kb-key dark" onclick="kbBackspace()">&#9003;</button>
+  </div>
+  <div class="kb-row">
+    <button class="kb-key dark" id="kb-num-toggle" onclick="kbToggleNum()">123</button>
+    <button class="kb-key wide" onclick="kbType(' ')">space</button>
+    <button class="kb-key dark" onclick="kbClear()">clear</button>
+    <button class="kb-key accent wide" onclick="kbDone()">Done</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   GLOBALS
+   ============================================================ */
+const REFRESH_MS = {{ refresh_interval }};
+let currentTab = 'today';
+let calView = 'agenda';
+let kbBuffer = '';
+let kbCallback = null;
+let kbShifted = false;
+let kbNumMode = false;
+let longPressTimer = null;
+
+/* ============================================================
+   TAB SWITCHING
+   ============================================================ */
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+  if (tab === 'today') loadToday();
+  if (tab === 'lists') loadAllLists();
+  if (tab === 'calendar') loadCalendar();
+  if (tab === 'home') loadHome();
+  if (tab === 'money') loadMoney();
+}
+
+/* ============================================================
+   API HELPER
+   ============================================================ */
+async function api(url, opts) {
+  try {
+    const r = await fetch(url, opts);
+    return await r.json();
+  } catch (e) {
+    console.error('API error:', url, e);
+    return null;
+  }
+}
+
+/* ============================================================
+   WEATHER RENDERING
+   ============================================================ */
+function renderWeatherCurrent(w) {
+  if (!w || w.error) {
+    document.getElementById('weather-current').innerHTML = '<div class="empty-state">Weather unavailable</div>';
+    return;
+  }
+  const c = w.current;
+  document.getElementById('weather-current').innerHTML = `
+    <div class="weather-current">
+      <span class="weather-icon-big">${c.icon}</span>
+      <div>
+        <div class="weather-temp">${c.temp}°F</div>
+        <div class="weather-details">${c.desc}</div>
+      </div>
+      <div class="weather-details" style="margin-left:auto;">
+        Feels like ${c.feels_like}°F<br>
+        Wind ${c.wind} mph<br>
+        Precip ${c.precip}"
+      </div>
+    </div>
+    <div class="weather-dress">${c.dress_rec}</div>
+  `;
+  // Hourly
+  const hContainer = document.getElementById('hourly-forecast');
+  hContainer.className = 'hourly-strip';
+  hContainer.innerHTML = w.hourly.map(h => `
+    <div class="hourly-item">
+      <div>${h.hour}</div>
+      <div class="h-icon">${h.icon}</div>
+      <div class="h-temp">${h.temp}°</div>
+      <div>${h.rain_pct}%</div>
+    </div>
+  `).join('');
+
+  // Daily
+  document.getElementById('daily-forecast').innerHTML = w.daily.map(d => `
+    <div class="daily-row">
+      <span class="daily-day">${d.day_short}</span>
+      <span class="daily-icon">${d.icon}</span>
+      <span class="daily-temps"><span class="daily-hi">${d.high}°</span> / <span class="daily-lo">${d.low}°</span></span>
+      <span class="daily-rain">${d.rain_pct}%</span>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   EVENT RENDERING
+   ============================================================ */
+function renderEvents(events, containerId, grouped) {
+  const el = document.getElementById(containerId);
+  if (!events || events.length === 0) {
+    el.innerHTML = '<div class="empty-state">No events</div>';
+    return;
+  }
+  let html = '';
+  if (grouped) {
+    const byDay = {};
+    events.forEach(e => {
+      const key = e.day_name + ', ' + new Date(e.start).toLocaleDateString();
+      if (!byDay[key]) byDay[key] = [];
+      byDay[key].push(e);
+    });
+    for (const [day, evts] of Object.entries(byDay)) {
+      html += `<div class="event-day-header">${day}</div>`;
+      evts.forEach(e => { html += eventHTML(e); });
+    }
+  } else {
+    events.forEach(e => { html += eventHTML(e); });
+  }
+  el.innerHTML = html;
+}
+
+function eventHTML(e) {
+  const guestClass = e.has_guests ? ' has-guests' : '';
+  const guests = e.guests && e.guests.length ? `<div class="event-guests">Guests: ${e.guests.join(', ')}</div>` : '';
+  const loc = e.location ? `<div class="event-location">${e.location}</div>` : '';
+  return `
+    <div class="event-item${guestClass}">
+      <div class="event-time">${e.time_display}</div>
+      <div class="event-summary">${e.summary}</div>
+      ${loc}${guests}
+    </div>`;
+}
+
+/* ============================================================
+   LIST RENDERING
+   ============================================================ */
+function renderList(items, containerId, listKey, opts = {}) {
+  const el = document.getElementById(containerId);
+  if (!items || items.length === 0) {
+    el.innerHTML = '<div class="empty-state">No items yet</div>';
+    return;
+  }
+  const filtered = opts.limit ? items.slice(0, opts.limit) : items;
+  el.innerHTML = filtered.map(item => {
+    const completed = item.completed ? ' completed' : '';
+    const check = item.completed ? '&#10003;' : '';
+    return `
+      <div class="list-row${completed}" id="row-${item.id}"
+           onclick="toggleItem('${listKey}','${item.id}',${item.completed})"
+           ontouchstart="startLongPress(event,'${listKey}','${item.id}')"
+           ontouchend="cancelLongPress()"
+           ontouchmove="cancelLongPress()">
+        <div class="list-check">${check}</div>
+        <div class="list-text">${escHTML(item.title)}</div>
+        <button class="list-delete" onclick="event.stopPropagation();deleteItemConfirm('${listKey}','${item.id}','${escAttr(item.title)}')">&times;</button>
+      </div>`;
+  }).join('');
+}
+
+function renderManageList(items, containerId, listKey) {
+  const el = document.getElementById(containerId);
+  if (!items || items.length === 0) {
+    el.innerHTML = '<div class="empty-state">No items</div>';
+    return;
+  }
+  el.innerHTML = items.map(item => `
+    <div class="list-row" id="manage-${item.id}">
+      <div class="list-text">${escHTML(item.title)}</div>
+      <button class="list-delete" style="display:flex" onclick="editItem('${listKey}','${item.id}','${escAttr(item.title)}')">&#9998;</button>
+      <button class="list-delete" style="display:flex;color:var(--red)" onclick="deleteItemConfirm('${listKey}','${item.id}','${escAttr(item.title)}')">&times;</button>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   LIST ACTIONS
+   ============================================================ */
+async function toggleItem(listKey, id, isCompleted) {
+  const endpoint = isCompleted ? 'uncomplete' : 'complete';
+  const row = document.getElementById('row-' + id);
+  if (!isCompleted) {
+    // Show completed state immediately
+    row.classList.add('completed');
+    // Show undo toast
+    showUndo(`Completed`, () => {
+      api(`/api/reminders/${listKey}/uncomplete`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({id})
+      }).then(() => reloadList(listKey));
+    });
+  }
+  await api(`/api/reminders/${listKey}/${endpoint}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({id})
+  });
+  setTimeout(() => reloadList(listKey), isCompleted ? 0 : 3200);
+}
+
+async function deleteItemConfirm(listKey, id, title) {
+  showUndo(`Deleted "${title}"`, async () => {
+    // Undo = re-add
+    await api(`/api/reminders/${listKey}/add`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({title})
+    });
+    reloadList(listKey);
+  });
+  await api(`/api/reminders/${listKey}/delete`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({id})
+  });
+  reloadList(listKey);
+}
+
+function editItem(listKey, id, currentTitle) {
+  openKeyboard(currentTitle, async (newTitle) => {
+    if (newTitle && newTitle !== currentTitle) {
+      await api(`/api/reminders/${listKey}/update`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({id, title: newTitle})
+      });
+      reloadList(listKey);
+    }
+  });
+}
+
+function openAddItem(listKey) {
+  openKeyboard('', async (title) => {
+    if (title.trim()) {
+      await api(`/api/reminders/${listKey}/add`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({title: title.trim()})
+      });
+      reloadList(listKey);
+    }
+  });
+}
+
+/* Long press for edit/delete */
+function startLongPress(e, listKey, id) {
+  longPressTimer = setTimeout(() => {
+    const row = document.getElementById('row-' + id);
+    if (row) row.classList.toggle('show-delete');
+  }, 600);
+}
+function cancelLongPress() {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+}
+
+/* Reload a single list */
+async function reloadList(listKey) {
+  const data = await api(`/api/reminders/${listKey}`);
+  if (!data) return;
+  // Update in Lists tab
+  const containerId = 'list-' + listKey.replace(/_/g, '-');
+  const el = document.getElementById(containerId);
+  if (el) renderList(data.items, containerId, listKey);
+  // Update in Home tab
+  const manageId = 'manage-' + listKey.replace('_chores', '').replace('daily', 'daily').replace('weekly', 'weekly');
+  // Update Today tab chores
+  if (listKey === 'daily_chores') {
+    renderList(data.items, 'today-chores', listKey);
+    renderManageList(data.items, 'manage-daily', listKey);
+  }
+  if (listKey === 'weekly_chores') {
+    renderManageList(data.items, 'manage-weekly', listKey);
+  }
+  if (listKey === 'things_to_talk_about') {
+    renderList(data.items, 'talk-preview', listKey, {limit: 5});
+  }
+}
+
+/* ============================================================
+   DATA LOADING
+   ============================================================ */
+async function loadToday() {
+  const [weather, todayEvents, weekEvents, chores, talk] = await Promise.all([
+    api('/api/weather'),
+    api('/api/calendar/today'),
+    api('/api/calendar/week'),
+    api('/api/reminders/daily_chores'),
+    api('/api/reminders/things_to_talk_about'),
+  ]);
+  renderWeatherCurrent(weather);
+  renderEvents(todayEvents, 'today-events', false);
+  renderEvents(weekEvents, 'week-events', true);
+  if (chores) renderList(chores.items, 'today-chores', 'daily_chores');
+  if (talk) renderList(talk.items, 'talk-preview', 'things_to_talk_about', {limit: 5});
+
+  // Weekend intentions from localStorage
+  document.getElementById('intention-sat').value = localStorage.getItem('intention-sat') || '';
+  document.getElementById('intention-sun').value = localStorage.getItem('intention-sun') || '';
+}
+
+async function loadAllLists() {
+  const keys = ['daily_chores','weekly_chores','things_to_talk_about','home_projects','vacation_planning'];
+  const results = await Promise.all(keys.map(k => api(`/api/reminders/${k}`)));
+  results.forEach((data, i) => {
+    if (data) {
+      const containerId = 'list-' + keys[i].replace(/_/g, '-');
+      renderList(data.items, containerId, keys[i]);
+    }
+  });
+}
+
+async function loadCalendar() {
+  if (calView === 'agenda') {
+    const events = await api('/api/calendar/upcoming?days=30');
+    renderEvents(events, 'cal-agenda', true);
+  } else if (calView === 'week') {
+    const events = await api('/api/calendar/week');
+    renderWeekView(events);
+  } else if (calView === 'month') {
+    await renderMonthView();
+  }
+  const visitors = await api('/api/calendar/visitors');
+  renderVisitors(visitors);
+}
+
+async function loadHome() {
+  const [daily, weekly, settings] = await Promise.all([
+    api('/api/reminders/daily_chores'),
+    api('/api/reminders/weekly_chores'),
+    api('/api/settings'),
+  ]);
+  if (daily) renderManageList(daily.items, 'manage-daily', 'daily_chores');
+  if (weekly) renderManageList(weekly.items, 'manage-weekly', 'weekly_chores');
+  if (settings) {
+    document.getElementById('setting-location').value = settings.location_name || '';
+    document.getElementById('setting-lat').value = settings.latitude || '';
+    document.getElementById('setting-lon').value = settings.longitude || '';
+    document.getElementById('setting-sheet').value = settings.budget_sheet_id || '';
+    const gc = settings.google_connected;
+    document.getElementById('google-status').innerHTML =
+      `<span class="status-dot ${gc ? 'connected' : 'disconnected'}"></span> ${gc ? 'Connected' : 'Not connected — run setup_google_oauth.py'}`;
+  }
+}
+
+async function loadMoney() {
+  const data = await api('/api/budget');
+  if (!data) return;
+  const barsEl = document.getElementById('budget-bars');
+  barsEl.innerHTML = data.categories.map(cat => {
+    const pct = cat.budget > 0 ? Math.min(100, (cat.spent / cat.budget) * 100) : 0;
+    const cls = pct > 100 ? 'over' : pct > 80 ? 'warn' : 'ok';
+    return `
+      <div class="budget-bar-container">
+        <div class="budget-label">
+          <span class="budget-name">${escHTML(cat.name)}</span>
+          <span class="budget-amounts">$${cat.spent.toFixed(0)} / $${cat.budget.toFixed(0)}</span>
+        </div>
+        <div class="budget-bar">
+          <div class="budget-fill ${cls}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const billsEl = document.getElementById('bills-list');
+  if (data.bills && data.bills.length) {
+    billsEl.innerHTML = data.bills.map(b => `
+      <div class="bill-row">
+        <span class="bill-due">${b.due_display}<br>${b.days_until === 0 ? 'Today' : b.days_until + 'd'}</span>
+        <span class="bill-name">${escHTML(b.name)}</span>
+        <span class="bill-amount">$${b.amount.toFixed(2)}</span>
+      </div>`).join('');
+  } else {
+    billsEl.innerHTML = '<div class="empty-state">No bills due this week</div>';
+  }
+}
+
+/* ============================================================
+   CALENDAR VIEWS
+   ============================================================ */
+function setCalView(view) {
+  calView = view;
+  document.querySelectorAll('.cal-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.getElementById('cal-agenda').style.display = view === 'agenda' ? 'block' : 'none';
+  document.getElementById('cal-week').style.display = view === 'week' ? 'block' : 'none';
+  document.getElementById('cal-month').style.display = view === 'month' ? 'block' : 'none';
+  loadCalendar();
+}
+
+function renderWeekView(events) {
+  const el = document.getElementById('cal-week');
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - now.getDay() + 1);
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+
+  const today = now.toISOString().split('T')[0];
+
+  let html = '<div class="week-grid">';
+  days.forEach(d => {
+    const iso = d.toISOString().split('T')[0];
+    const isToday = iso === today;
+    const dayEvents = (events || []).filter(e => e.date === iso);
+    html += `<div class="week-col${isToday ? ' today' : ''}">
+      <div class="week-col-header">${d.toLocaleDateString('en', {weekday:'short'})}<br>${d.getDate()}</div>`;
+    dayEvents.forEach(e => {
+      html += `<div class="week-event${e.has_guests ? ' has-guests' : ''}">
+        <div class="week-event-time">${e.all_day ? 'All day' : e.time_display}</div>
+        ${escHTML(e.summary)}
+      </div>`;
+    });
+    if (!dayEvents.length) html += '<div class="empty-state" style="font-size:11px;">—</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+let monthViewDate = new Date();
+async function renderMonthView(direction) {
+  if (direction === 'prev') monthViewDate.setMonth(monthViewDate.getMonth() - 1);
+  if (direction === 'next') monthViewDate.setMonth(monthViewDate.getMonth() + 1);
+
+  const year = monthViewDate.getFullYear();
+  const month = monthViewDate.getMonth() + 1;
+  const events = await api(`/api/calendar/month/${year}/${month}`);
+  const el = document.getElementById('cal-month');
+
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const startWeekday = firstDay.getDay() || 7; // Monday = 1
+  const daysInMonth = lastDay.getDate();
+  const today = new Date().toISOString().split('T')[0];
+
+  let html = `<div class="month-nav">
+    <button class="month-nav-btn" onclick="renderMonthView('prev')">&lsaquo;</button>
+    <span class="month-name">${firstDay.toLocaleDateString('en', {month:'long', year:'numeric'})}</span>
+    <button class="month-nav-btn" onclick="renderMonthView('next')">&rsaquo;</button>
+  </div>`;
+
+  html += '<div class="month-grid">';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    html += `<div class="month-header">${d}</div>`;
+  });
+
+  // Empty cells before first day
+  const offset = startWeekday === 0 ? 6 : startWeekday - 1;
+  for (let i = 0; i < offset; i++) html += '<div class="month-day empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = iso === today;
+    const dayEvents = (events || []).filter(e => e.date === iso);
+    html += `<div class="month-day${isToday ? ' today' : ''}">
+      <div class="month-day-num">${d}</div>`;
+    dayEvents.forEach(e => {
+      html += `<div class="month-event${e.has_guests ? ' has-guests' : ''}" title="${escAttr(e.summary)}">${escHTML(e.summary)}</div>`;
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderVisitors(visitors) {
+  const el = document.getElementById('upcoming-visitors');
+  if (!visitors || !visitors.length) {
+    el.innerHTML = '<div class="empty-state">No upcoming visitors</div>';
+    return;
+  }
+  el.innerHTML = visitors.map(v => `
+    <div class="visitor-card">
+      <div class="visitor-countdown">${v.days_until}<small>${v.days_until === 1 ? 'day' : 'days'}</small></div>
+      <div class="visitor-info">
+        <div class="visitor-name">${escHTML(v.summary)}</div>
+        <div class="visitor-date">${new Date(v.start).toLocaleDateString('en', {weekday:'long', month:'short', day:'numeric'})} &mdash; ${v.time_display}</div>
+        ${v.guests.length ? `<div class="event-guests">${v.guests.join(', ')}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+async function saveSettings() {
+  await api('/api/settings', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      location_name: document.getElementById('setting-location').value,
+      latitude: parseFloat(document.getElementById('setting-lat').value) || 0,
+      longitude: parseFloat(document.getElementById('setting-lon').value) || 0,
+      budget_sheet_id: document.getElementById('setting-sheet').value,
+    })
+  });
+  showToast('Settings saved');
+}
+
+async function refreshAll() {
+  await api('/api/refresh', {method: 'POST'});
+  loadToday();
+  showToast('All data refreshed');
+}
+
+/* ============================================================
+   WEEKEND INTENTIONS
+   ============================================================ */
+function saveIntention(day, val) {
+  localStorage.setItem('intention-' + day, val);
+}
+
+/* ============================================================
+   UNDO TOAST
+   ============================================================ */
+function showUndo(message, undoFn) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span>${escHTML(message)}</span><button class="toast-undo" onclick="this.undoFn()">Undo</button>`;
+  toast.querySelector('.toast-undo').undoFn = () => {
+    undoFn();
+    toast.classList.add('hiding');
+    setTimeout(() => toast.remove(), 300);
+  };
+  container.appendChild(toast);
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.classList.add('hiding');
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 3000);
+}
+
+function showToast(message) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
+/* ============================================================
+   IN-APP KEYBOARD
+   ============================================================ */
+function openKeyboard(initialText, callback) {
+  kbBuffer = initialText || '';
+  kbCallback = callback;
+  kbShifted = false;
+  kbNumMode = false;
+  updateKbPreview();
+  updateKbKeys();
+  document.getElementById('kb-overlay').classList.add('active');
+  document.getElementById('kb-sheet').classList.add('active');
+}
+
+function closeKeyboard() {
+  document.getElementById('kb-overlay').classList.remove('active');
+  document.getElementById('kb-sheet').classList.remove('active');
+  kbCallback = null;
+}
+
+function kbType(ch) {
+  if (kbShifted) {
+    kbBuffer += ch.toUpperCase();
+    kbShifted = false;
+    updateKbKeys();
+  } else {
+    kbBuffer += ch;
+  }
+  updateKbPreview();
+}
+
+function kbBackspace() {
+  kbBuffer = kbBuffer.slice(0, -1);
+  updateKbPreview();
+}
+
+function kbClear() {
+  kbBuffer = '';
+  updateKbPreview();
+}
+
+function kbDone() {
+  const cb = kbCallback;
+  closeKeyboard();
+  if (cb) cb(kbBuffer);
+}
+
+function kbShift() {
+  kbShifted = !kbShifted;
+  updateKbKeys();
+}
+
+function kbToggleNum() {
+  kbNumMode = !kbNumMode;
+  updateKbKeys();
+}
+
+function updateKbPreview() {
+  document.getElementById('kb-preview').innerHTML =
+    escHTML(kbBuffer) + '<span class="kb-input-cursor"></span>';
+}
+
+function updateKbKeys() {
+  const alphaRows = [
+    ['q','w','e','r','t','y','u','i','o','p'],
+    ['a','s','d','f','g','h','j','k','l'],
+    ['z','x','c','v','b','n','m']
+  ];
+  const numRows = [
+    ['1','2','3','4','5','6','7','8','9','0'],
+    ['-','/',':',';','(',')','$','&','@'],
+    ['.', ',', '?', '!', "'", '"', '#']
+  ];
+  const rows = kbNumMode ? numRows : alphaRows;
+  const keyBtns = document.querySelectorAll('.kb-row');
+
+  // Update rows 0-2 (skip row 3 = bottom bar)
+  for (let r = 0; r < 3; r++) {
+    const btns = keyBtns[r].querySelectorAll('.kb-key:not(.dark)');
+    const chars = rows[r];
+    btns.forEach((btn, i) => {
+      if (i < chars.length) {
+        const ch = kbShifted && !kbNumMode ? chars[i].toUpperCase() : chars[i];
+        btn.textContent = ch;
+        btn.onclick = () => kbType(chars[i]);
+        btn.style.display = '';
+      } else {
+        btn.style.display = 'none';
+      }
+    });
+  }
+
+  document.getElementById('kb-shift').style.background = kbShifted ? 'var(--accent)' : '#555';
+  document.getElementById('kb-shift').style.color = kbShifted ? '#000' : '#fff';
+  document.getElementById('kb-num-toggle').textContent = kbNumMode ? 'ABC' : '123';
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function escHTML(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return (s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+/* ============================================================
+   INIT & AUTO-REFRESH
+   ============================================================ */
+loadToday();
+setInterval(() => {
+  if (currentTab === 'today') loadToday();
+  else if (currentTab === 'lists') loadAllLists();
+  else if (currentTab === 'calendar') loadCalendar();
+  else if (currentTab === 'money') loadMoney();
+}, REFRESH_MS);
+
+</script>
+</body>
+</html>
