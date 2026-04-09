@@ -6,7 +6,7 @@
 <title>The Home Launchpad</title>
 <script>
 // Apply saved theme immediately to prevent flash
-(function(){var t=localStorage.getItem('dashboard-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
+(function(){var t=localStorage.getItem('dashboard-theme');if(t){if(t==='system'){var h=new Date().getHours();document.documentElement.setAttribute('data-theme',(h>=20||h<7)?'dark':'light');}else{document.documentElement.setAttribute('data-theme',t);}}})();
 </script>
 <style>
 /* ============================================================
@@ -1053,6 +1053,7 @@ h2.section-title:first-child { margin-top: 0; }
         <div class="settings-row">
           <span class="settings-label">Theme</span>
           <select class="settings-input" id="setting-theme" onchange="applyTheme(this.value)">
+            <option value="system">System (dark at night, light by day)</option>
             <option value="dark">Dark</option>
             <option value="light">Light (Home Assistant)</option>
             <option value="warm">Warm</option>
@@ -1486,9 +1487,12 @@ async function loadToday() {
 
   if (talk) renderList(talk.items, 'talk-preview', 'things_to_talk_about', {limit: 5});
 
-  // Weekend intentions from localStorage
-  document.getElementById('intention-sat').textContent = localStorage.getItem('intention-sat') || 'Tap to add plans...';
-  document.getElementById('intention-sun').textContent = localStorage.getItem('intention-sun') || 'Tap to add plans...';
+  // Weekend intentions from settings
+  const weekendSettings = await api('/api/settings');
+  if (weekendSettings) {
+    document.getElementById('intention-sat').textContent = weekendSettings.weekend_sat || 'Tap to add plans...';
+    document.getElementById('intention-sun').textContent = weekendSettings.weekend_sun || 'Tap to add plans...';
+  }
 }
 
 async function loadAllLists() {
@@ -1786,9 +1790,32 @@ async function renderMonthView(direction) {
 /* ============================================================
    THEME & BACKGROUND
    ============================================================ */
+let _systemThemeInterval = null;
+
+function resolveSystemTheme() {
+  const hour = new Date().getHours();
+  return (hour >= 20 || hour < 7) ? 'dark' : 'light';
+}
+
 function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('dashboard-theme', theme);
+  if (theme === 'system') {
+    document.documentElement.setAttribute('data-theme', resolveSystemTheme());
+    // Check every minute for day/night transition
+    if (!_systemThemeInterval) {
+      _systemThemeInterval = setInterval(() => {
+        if (localStorage.getItem('dashboard-theme') === 'system') {
+          document.documentElement.setAttribute('data-theme', resolveSystemTheme());
+        }
+      }, 60000);
+    }
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (_systemThemeInterval) {
+      clearInterval(_systemThemeInterval);
+      _systemThemeInterval = null;
+    }
+  }
 }
 
 function applyBackground(url) {
@@ -1871,15 +1898,20 @@ async function refreshAll() {
 }
 
 /* ============================================================
-   WEEKEND INTENTIONS
+   WEEKEND INTENTIONS (persisted to settings.json)
    ============================================================ */
-function saveIntention(day, val) {
-  localStorage.setItem('intention-' + day, val);
+async function saveIntention(day, val) {
   document.getElementById('intention-' + day).textContent = val || 'Tap to add plans...';
+  const key = 'weekend_' + day;
+  await api('/api/settings', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({[key]: val})
+  });
 }
 
 function editIntention(day) {
-  const current = localStorage.getItem('intention-' + day) || '';
+  const el = document.getElementById('intention-' + day);
+  const current = (el.textContent === 'Tap to add plans...') ? '' : el.textContent;
   openKeyboard(current, (newVal) => {
     saveIntention(day, newVal);
   });
