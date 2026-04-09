@@ -538,11 +538,18 @@ h2.section-title:first-child { margin-top: 0; }
 .week-event.has-guests { border-left-color: var(--visitor); }
 .week-event-time { font-size: 10px; color: var(--accent); }
 
-/* Calendar combined view */
-.cal-combined { display: flex; flex-direction: column; gap: 16px; }
-.cal-combined .week-grid { min-height: auto; }
-.cal-combined .week-col { min-height: 180px; }
-.cal-combined .month-day { min-height: 60px; }
+/* Calendar two-panel layout (week left, month right) */
+.cal-two-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  height: 100%;
+}
+.cal-week-card { overflow-y: auto; }
+.cal-month-card { overflow-y: auto; }
+.cal-two-panel .week-grid { min-height: auto; }
+.cal-two-panel .week-col { min-height: 500px; }
+.cal-two-panel .month-day { min-height: 80px; }
 
 /* Lists grid */
 .lists-grid {
@@ -571,29 +578,6 @@ h2.section-title:first-child { margin-top: 0; }
   min-height: 40px;
   font-size: 14px;
 }
-
-/* Visitors card */
-.visitor-card {
-  display: flex;
-  align-items: center;
-  padding: 12px 14px;
-  background: var(--bg-card-alt);
-  border-radius: 8px;
-  margin-bottom: 6px;
-  border-left: 3px solid var(--visitor);
-  gap: 12px;
-}
-.visitor-countdown {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--visitor);
-  min-width: 48px;
-  text-align: center;
-}
-.visitor-countdown small { font-size: 10px; font-weight: 400; display: block; }
-.visitor-info { flex: 1; }
-.visitor-name { font-size: 15px; color: var(--text-bright); }
-.visitor-date { font-size: 12px; color: var(--text-dim); }
 
 /* ============================================================
    MONEY TAB
@@ -879,11 +863,12 @@ h2.section-title:first-child { margin-top: 0; }
 .empty-state { text-align: center; padding: 20px; color: var(--text-dim); font-size: 14px; }
 
 /* ============================================================
-   SCROLLBAR (touch-friendly thin)
+   SCROLLBAR (touch-friendly, visible)
    ============================================================ */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 5px; min-height: 40px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
 </style>
 </head>
 <body>
@@ -996,17 +981,13 @@ h2.section-title:first-child { margin-top: 0; }
          TAB 3: CALENDAR
          ============================================================ -->
     <div class="tab-panel" id="panel-calendar">
-      <div class="cal-combined">
-        <div class="card">
+      <div class="cal-two-panel">
+        <div class="card cal-week-card">
           <div class="card-title">This Week</div>
           <div id="cal-week"></div>
         </div>
-        <div class="card">
+        <div class="card cal-month-card">
           <div id="cal-month"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Upcoming Visitors</div>
-          <div id="upcoming-visitors"></div>
         </div>
       </div>
     </div>
@@ -1015,11 +996,6 @@ h2.section-title:first-child { margin-top: 0; }
          TAB 4: HOME
          ============================================================ -->
     <div class="tab-panel" id="panel-home">
-      <h2 class="section-title">Manage Lists</h2>
-      <div id="manage-lists-container">
-        <!-- Dynamically populated from /api/reminders/config -->
-      </div>
-
       <h2 class="section-title">Apple Reminders</h2>
       <div class="card">
         <div style="margin-bottom:10px; color:var(--text-dim); font-size:0.95rem;">
@@ -1029,6 +1005,18 @@ h2.section-title:first-child { margin-top: 0; }
         <div style="display:flex; gap:10px; margin-top:12px;">
           <button class="btn btn-primary" onclick="saveListConfig()">Save List Selection</button>
           <button class="btn btn-outline" onclick="discoverLists()">Refresh Lists</button>
+        </div>
+      </div>
+
+      <h2 class="section-title">Google Calendars</h2>
+      <div class="card">
+        <div style="margin-bottom:10px; color:var(--text-dim); font-size:0.95rem;">
+          Select which Google calendars appear on the dashboard.
+        </div>
+        <div id="calendar-picker" class="loading">Discovering calendars...</div>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn btn-primary" onclick="saveCalendarConfig()">Save Calendar Selection</button>
+          <button class="btn btn-outline" onclick="discoverCalendars()">Refresh Calendars</button>
         </div>
       </div>
 
@@ -1319,21 +1307,6 @@ function renderList(items, containerId, listKey, opts = {}) {
   }).join('');
 }
 
-function renderManageList(items, containerId, listKey) {
-  const el = document.getElementById(containerId);
-  if (!items || items.length === 0) {
-    el.innerHTML = '<div class="empty-state">No items</div>';
-    return;
-  }
-  el.innerHTML = items.map(item => `
-    <div class="list-row" id="manage-${item.id}">
-      <div class="list-text">${escHTML(item.title)}</div>
-      <button class="list-delete" style="display:flex" onclick="editItem('${listKey}','${item.id}','${escAttr(item.title)}')">&#9998;</button>
-      <button class="list-delete" style="display:flex;color:var(--red)" onclick="deleteItemConfirm('${listKey}','${item.id}','${escAttr(item.title)}')">&times;</button>
-    </div>
-  `).join('');
-}
-
 /* ============================================================
    LIST ACTIONS
    ============================================================ */
@@ -1427,9 +1400,6 @@ async function reloadList(listKey) {
   // Update in Today tab
   const todayEl = document.getElementById('today-' + listKey);
   if (todayEl) renderList(data.items, 'today-' + listKey, listKey);
-  // Update in Home/Manage tab
-  const manageEl = document.getElementById('manage-' + listKey);
-  if (manageEl) renderManageList(data.items, 'manage-' + listKey, listKey);
   // Talk preview
   if (listKey === 'things_to_talk_about') {
     renderList(data.items, 'talk-preview', listKey, {limit: 5});
@@ -1509,41 +1479,14 @@ async function loadAllLists() {
 }
 
 async function loadCalendar() {
-  const [weekEvents, visitors] = await Promise.all([
-    api('/api/calendar/week'),
-    api('/api/calendar/visitors'),
-  ]);
+  const weekEvents = await api('/api/calendar/week');
   renderWeekView(weekEvents);
   await renderMonthView();
-  renderVisitors(visitors);
 }
 
 async function loadHome() {
-  const lists = await getListsConfig();
-
-  // Build manage cards dynamically
-  const container = document.getElementById('manage-lists-container');
-  container.innerHTML = lists.map(l => `
-    <div class="card">
-      <div class="card-title">${escHTML(l.name)}</div>
-      <div id="manage-${l.key}"></div>
-      <button class="add-btn" onclick="openAddItem('${l.key}')">
-        <span class="add-icon">+</span> Add item
-      </button>
-    </div>
-  `).join('');
-
-  // Fetch all list data + settings
-  const results = await Promise.all([
-    ...lists.map(l => api(`/api/reminders/${l.key}`)),
-    api('/api/settings'),
-  ]);
-
-  lists.forEach((l, i) => {
-    if (results[i]) renderManageList(results[i].items, 'manage-' + l.key, l.key);
-  });
-
-  const settings = results[results.length - 1];
+  // Fetch settings
+  const settings = await api('/api/settings');
   if (settings) {
     document.getElementById('setting-location').value = settings.location_name || '';
     document.getElementById('setting-lat').value = settings.latitude || '';
@@ -1556,8 +1499,9 @@ async function loadHome() {
       `<span class="status-dot ${gc ? 'connected' : 'disconnected'}"></span> ${gc ? 'Connected' : 'Not connected — run setup_google_oauth.py'}`;
   }
 
-  // Discover available Apple Reminders lists
+  // Discover available Apple Reminders lists and Google Calendars
   discoverLists();
+  discoverCalendars();
 }
 
 /* ============================================================
@@ -1625,6 +1569,41 @@ async function saveListConfig() {
   _listsConfig = null;
   showUndo('List config saved — refreshing...', null);
   setTimeout(() => location.reload(), 1500);
+}
+
+/* ============================================================
+   GOOGLE CALENDAR CONFIGURATION
+   ============================================================ */
+async function discoverCalendars() {
+  const picker = document.getElementById('calendar-picker');
+  picker.innerHTML = '<span class="loading">Discovering calendars...</span>';
+  const calendars = await api('/api/calendar/discover');
+  if (!calendars || !calendars.length) {
+    picker.innerHTML = '<div class="empty-state">No calendars found. Connect Google account first.</div>';
+    return;
+  }
+  picker.innerHTML = calendars.map(cal => `
+    <div class="settings-row" style="align-items:center;">
+      <label style="display:flex; align-items:center; gap:8px; flex:1; cursor:pointer;">
+        <input type="checkbox" class="cal-toggle" data-id="${escAttr(cal.id)}" ${cal.enabled ? 'checked' : ''}>
+        ${cal.color ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${cal.color};flex-shrink:0;"></span>` : ''}
+        <span style="font-size:1.05rem;">${escHTML(cal.name)}</span>
+        ${cal.primary ? '<span style="color:var(--text-dim); font-size:0.8rem;">(primary)</span>' : ''}
+      </label>
+    </div>
+  `).join('');
+}
+
+async function saveCalendarConfig() {
+  const toggles = document.querySelectorAll('.cal-toggle');
+  const ids = [];
+  toggles.forEach(t => { if (t.checked) ids.push(t.dataset.id); });
+  await api('/api/calendar/config', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({calendar_ids: ids}),
+  });
+  showToast('Calendar selection saved');
 }
 
 async function loadMoney() {
@@ -1741,24 +1720,6 @@ async function renderMonthView(direction) {
   }
   html += '</div>';
   el.innerHTML = html;
-}
-
-function renderVisitors(visitors) {
-  const el = document.getElementById('upcoming-visitors');
-  if (!visitors || !visitors.length) {
-    el.innerHTML = '<div class="empty-state">No upcoming visitors</div>';
-    return;
-  }
-  el.innerHTML = visitors.map(v => `
-    <div class="visitor-card">
-      <div class="visitor-countdown">${v.days_until}<small>${v.days_until === 1 ? 'day' : 'days'}</small></div>
-      <div class="visitor-info">
-        <div class="visitor-name">${escHTML(v.summary)}</div>
-        <div class="visitor-date">${new Date(v.start).toLocaleDateString('en', {weekday:'long', month:'short', day:'numeric'})} &mdash; ${v.time_display}</div>
-        ${v.guests.length ? `<div class="event-guests">${v.guests.join(', ')}</div>` : ''}
-      </div>
-    </div>
-  `).join('');
 }
 
 /* ============================================================

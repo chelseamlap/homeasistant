@@ -17,7 +17,7 @@ from reminders_bridge import (
 )
 from google_calendar import (
     get_today_events, get_week_events, get_upcoming_events,
-    get_upcoming_visitors, get_month_events,
+    get_month_events, discover_calendars,
 )
 from google_sheets import get_budget_data
 from google_auth import is_authenticated
@@ -177,10 +177,26 @@ def api_calendar_upcoming():
     return jsonify(events)
 
 
-@app.route("/api/calendar/visitors")
-def api_calendar_visitors():
-    visitors = get_upcoming_visitors()
-    return jsonify(visitors)
+@app.route("/api/calendar/discover")
+def api_calendar_discover():
+    """Discover all calendars available to the Google account."""
+    calendars = discover_calendars()
+    settings = config.load_settings()
+    selected_ids = settings.get("calendar_ids", [])
+    for cal in calendars:
+        cal["enabled"] = cal["id"] in selected_ids or (not selected_ids and cal["primary"])
+    return jsonify(calendars)
+
+
+@app.route("/api/calendar/config", methods=["POST"])
+def api_calendar_save_config():
+    """Save which calendars to include."""
+    data = request.get_json()
+    calendar_ids = data.get("calendar_ids", [])
+    settings = config.load_settings()
+    settings["calendar_ids"] = calendar_ids
+    config.save_settings(settings)
+    return jsonify({"ok": True})
 
 
 @app.route("/api/calendar/month/<int:year>/<int:month>")
@@ -216,7 +232,7 @@ def api_get_settings():
 def api_save_settings():
     data = request.get_json()
     settings = config.load_settings()
-    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme"]:
+    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme", "calendar_ids"]:
         if key in data:
             settings[key] = data[key]
     config.save_settings(settings)

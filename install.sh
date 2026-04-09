@@ -150,6 +150,8 @@ if [[ "$AUTO_CHROME" == "y" ]]; then
         CHROMIUM_BIN="chromium"
     fi
     CHROME_CMD="$CHROMIUM_BIN --start-maximized --noerrdialogs --disable-infobars --app=http://localhost:5000"
+    # Wait-for-port script: waits up to 30s for the dashboard to be ready
+    WAIT_CMD="for i in \$(seq 1 30); do curl -s http://localhost:5000 >/dev/null 2>&1 && break; sleep 1; done"
     INSTALLED=false
 
     # Method 1: XDG autostart (works on most desktop environments)
@@ -158,9 +160,9 @@ if [[ "$AUTO_CHROME" == "y" ]]; then
     cat > "$XDG_DIR/home-launchpad.desktop" << EOF
 [Desktop Entry]
 Type=Application
-Name=Family Dashboard
-Comment=Launch Family Dashboard in Chrome kiosk mode
-Exec=bash -c 'sleep 5 && $CHROME_CMD'
+Name=The Home Launchpad
+Comment=Launch dashboard in Chrome after server is ready
+Exec=bash -c '$WAIT_CMD && $CHROME_CMD'
 X-GNOME-Autostart-enabled=true
 EOF
     echo "✓ XDG autostart entry created ($XDG_DIR/home-launchpad.desktop)"
@@ -170,7 +172,7 @@ EOF
     LXDE_DIR="$HOME/.config/lxsession/LXDE-pi"
     if [ -d "$LXDE_DIR" ]; then
         if ! grep -q "home-launchpad" "$LXDE_DIR/autostart" 2>/dev/null; then
-            echo "@bash -c 'sleep 5 && $CHROME_CMD'" >> "$LXDE_DIR/autostart"
+            echo "@bash -c '$WAIT_CMD && $CHROME_CMD'" >> "$LXDE_DIR/autostart"
             echo "✓ LXDE autostart entry added"
         fi
     fi
@@ -181,16 +183,16 @@ EOF
         if ! grep -q "home-launchpad" "$WAYFIRE_INI" 2>/dev/null; then
             # Add to [autostart] section
             if grep -q "\[autostart\]" "$WAYFIRE_INI"; then
-                sed -i "/\[autostart\]/a home-launchpad = bash -c 'sleep 5 && $CHROME_CMD'" "$WAYFIRE_INI"
+                sed -i "/\[autostart\]/a home-launchpad = bash -c '$WAIT_CMD && $CHROME_CMD'" "$WAYFIRE_INI"
             else
-                echo -e "\n[autostart]\nhome-launchpad = bash -c 'sleep 5 && $CHROME_CMD'" >> "$WAYFIRE_INI"
+                echo -e "\n[autostart]\nhome-launchpad = bash -c '$WAIT_CMD && $CHROME_CMD'" >> "$WAYFIRE_INI"
             fi
             echo "✓ Wayfire autostart entry added"
         fi
     fi
 
     if [ "$INSTALLED" = true ]; then
-        echo "→ Chrome will auto-launch 5 seconds after desktop loads"
+        echo "→ Chrome will auto-launch once the dashboard server is ready (up to 30s)"
     fi
 fi
 

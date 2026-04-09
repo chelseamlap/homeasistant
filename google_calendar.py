@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from google_auth import get_credentials
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,61 @@ def _get_service():
     if not creds:
         return None
     return build("calendar", "v3", credentials=creds)
+
+
+def _get_calendar_ids():
+    """Get configured calendar IDs. Returns list of calendar IDs to query."""
+    settings = config.load_settings()
+    ids = settings.get("calendar_ids", [])
+    return ids if ids else ["primary"]
+
+
+def discover_calendars():
+    """Discover all calendars available to the Google account."""
+    service = _get_service()
+    if not service:
+        return []
+    try:
+        result = service.calendarList().list().execute()
+        calendars = []
+        for cal in result.get("items", []):
+            calendars.append({
+                "id": cal["id"],
+                "name": cal.get("summary", cal["id"]),
+                "color": cal.get("backgroundColor", ""),
+                "primary": cal.get("primary", False),
+                "access_role": cal.get("accessRole", ""),
+            })
+        return calendars
+    except Exception as e:
+        logger.error(f"Calendar discovery failed: {e}")
+        return []
+
+
+def _fetch_events_multi(calendar_ids, time_min, time_max, max_per_cal=100):
+    """Fetch events from multiple calendars and merge them."""
+    service = _get_service()
+    if not service:
+        return []
+
+    all_events = []
+    for cal_id in calendar_ids:
+        try:
+            result = service.events().list(
+                calendarId=cal_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime",
+                maxResults=max_per_cal,
+            ).execute()
+            all_events.extend([_parse_event(e) for e in result.get("items", [])])
+        except Exception as e:
+            logger.error(f"Calendar fetch failed for {cal_id}: {e}")
+
+    # Sort merged events by start time
+    all_events.sort(key=lambda e: e["start"])
+    return all_events
 
 
 def _has_guests(event):
@@ -66,116 +122,36 @@ def _parse_event(event):
 
 
 def get_today_events():
-    """Get all events for today."""
-    service = _get_service()
-    if not service:
-        return []
-
+    """Get all events for today from all configured calendars."""
     now = datetime.now()
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_day = start_of_day + timedelta(days=1)
-
-    try:
-        result = service.events().list(
-            calendarId="primary",
-            timeMin=start_of_day.isoformat() + "Z" if start_of_day.tzinfo is None else start_of_day.isoformat(),
-            timeMax=end_of_day.isoformat() + "Z" if end_of_day.tzinfo is None else end_of_day.isoformat(),
-            singleEvents=True,
-            orderBy="startTime",
-            maxResults=50,
-        ).execute()
-        return [_parse_event(e) for e in result.get("items", [])]
-    except Exception as e:
-        logger.error(f"Calendar fetch failed: {e}")
-        return []
+    t_min = start_of_day.isoformat() + "Z"
+    t_max = end_of_day.isoformat() + "Z"
+    return _fetch_events_multi(_get_calendar_ids(), t_min, t_max, max_per_cal=50)
 
 
 def get_week_events():
     """Get all events for Monday–Sunday of the current week."""
-    service = _get_service()
-    if not service:
-        return []
-
     now = datetime.now()
     monday = now - timedelta(days=now.weekday())
     monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
     sunday = monday + timedelta(days=7)
-
-    try:
-        result = service.events().list(
-            calendarId="primary",
-            timeMin=monday.isoformat() + "Z",
-            timeMax=sunday.isoformat() + "Z",
-            singleEvents=True,
-            orderBy="startTime",
-            maxResults=100,
-        ).execute()
-        return [_parse_event(e) for e in result.get("items", [])]
-    except Exception as e:
-        logger.error(f"Calendar week fetch failed: {e}")
-        return []
+    return _fetch_events_multi(_get_calendar_ids(), monday.isoformat() + "Z", sunday.isoformat() + "Z")
 
 
 def get_upcoming_events(days=30):
     """Get all upcoming events for the next N days."""
-    service = _get_service()
-    if not service:
-        return []
-
     now = datetime.now()
     end = now + timedelta(days=days)
-
-    try:
-        result = service.events().list(
-            calendarId="primary",
-            timeMin=now.isoformat() + "Z",
-            timeMax=end.isoformat() + "Z",
-            singleEvents=True,
-            orderBy="startTime",
-            maxResults=250,
-        ).execute()
-        return [_parse_event(e) for e in result.get("items", [])]
-    except Exception as e:
-        logger.error(f"Calendar upcoming fetch failed: {e}")
-        return []
-
-
-def get_upcoming_visitors(days=30):
-    """Get upcoming events that involve visitors/guests."""
-    events = get_upcoming_events(days)
-    visitors = [e for e in events if e["has_guests"]]
-
-    now = datetime.now()
-    for v in visitors:
-        event_date = datetime.fromisoformat(v["start"])
-        delta = (event_date.date() - now.date()).days
-        v["days_until"] = max(0, delta)
-
-    return visitors[:3]
+    return _fetch_events_multi(_get_calendar_ids(), now.isoformat() + "Z", end.isoformat() + "Z", max_per_cal=250)
 
 
 def get_month_events(year, month):
     """Get all events for a specific month."""
-    service = _get_service()
-    if not service:
-        return []
-
     start = datetime(year, month, 1)
     if month == 12:
         end = datetime(year + 1, 1, 1)
     else:
         end = datetime(year, month + 1, 1)
-
-    try:
-        result = service.events().list(
-            calendarId="primary",
-            timeMin=start.isoformat() + "Z",
-            timeMax=end.isoformat() + "Z",
-            singleEvents=True,
-            orderBy="startTime",
-            maxResults=300,
-        ).execute()
-        return [_parse_event(e) for e in result.get("items", [])]
-    except Exception as e:
-        logger.error(f"Calendar month fetch failed: {e}")
-        return []
+    return _fetch_events_multi(_get_calendar_ids(), start.isoformat() + "Z", end.isoformat() + "Z", max_per_cal=300)

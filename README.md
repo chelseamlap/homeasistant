@@ -5,9 +5,9 @@ A touch-optimized family command center for a 24" Dell touchscreen on a Raspberr
 ## Architecture
 
 - **Backend**: Python/Flask on the Pi, serves localhost
-- **Frontend**: Single-page HTML/CSS/JS, dark mode, 1920x1080 landscape
+- **Frontend**: Single-page HTML/CSS/JS, themeable (light/dark/warm), 1920x1080 landscape
 - **Lists**: Apple Reminders — native macOS (JXA) or CalDAV (Pi), with local JSON fallback
-- **Calendar**: Google Calendar API via OAuth2
+- **Calendar**: Google Calendar API via OAuth2 (multi-calendar support)
 - **Budget**: Google Sheets API via OAuth2
 - **Weather**: Open-Meteo (free, no API key)
 
@@ -82,7 +82,11 @@ python3 setup_google_oauth.py
 
 This opens a browser. Sign in with your family Google account and grant Calendar + Sheets read access. The token is stored locally in `data/google_token.json`.
 
-### 5. Set Up the Google Sheet for Budget
+### 5. Configure Google Calendars
+
+After connecting your Google account, go to **Home > Google Calendars** to select which calendars appear on the dashboard. The dashboard auto-discovers all calendars on the connected account (primary, shared, family, etc.). By default, only the primary calendar is shown.
+
+### 6. Set Up the Google Sheet for Budget
 
 Create a Google Sheet with two tabs:
 
@@ -105,7 +109,7 @@ Create a Google Sheet with two tabs:
 
 Copy the Sheet ID from the URL (the long string between `/d/` and `/edit`). You'll enter this in the dashboard's Home tab settings.
 
-### 6. Configure Location
+### 7. Configure Location
 
 On first launch, go to the **Home** tab and enter:
 - Your city name (for display)
@@ -114,7 +118,7 @@ On first launch, go to the **Home** tab and enter:
 
 Find your coordinates at https://www.latlong.net/
 
-### 7. Launch the Dashboard
+### 8. Launch the Dashboard
 
 ```bash
 cd /home/pi/git-repo/home-launchpad
@@ -123,7 +127,7 @@ python3 app.py
 
 The server starts on port 5000 by default.
 
-### 8. Launch Chrome in Soft Kiosk Mode
+### 9. Launch Chrome in Soft Kiosk Mode
 
 ```bash
 chromium-browser --start-maximized --app=http://localhost:5000
@@ -131,7 +135,7 @@ chromium-browser --start-maximized --app=http://localhost:5000
 
 This opens Chrome in "app mode" — no address bar, no tabs — but the user can still Alt+F4 or switch windows.
 
-### 9. Auto-Start on Boot (Optional)
+### 10. Auto-Start on Boot (Optional)
 
 Create a systemd service:
 
@@ -329,7 +333,7 @@ home-launchpad/
 ├── weather.py              # Open-Meteo weather API
 ├── reminders_bridge.py     # Apple Reminders bridge (JXA / CalDAV / local JSON)
 ├── google_auth.py          # Google OAuth2 handler
-├── google_calendar.py      # Google Calendar API
+├── google_calendar.py      # Google Calendar API (multi-calendar)
 ├── google_sheets.py        # Google Sheets API (budget)
 ├── setup_google_oauth.py   # One-time OAuth setup script
 ├── requirements.txt        # Python dependencies
