@@ -2,6 +2,10 @@
 
 A touch-optimized family command center for a 24" Dell touchscreen on a Raspberry Pi 4. Five tabs: Today + This Week, Lists, Calendar, Home, Money.
 
+**New here?** Start with these guides:
+- **[implementation.md](implementation.md)** — Step-by-step setup from scratch (written for non-technical users)
+- **[updates.md](updates.md)** — How to update the Pi, change settings, and request new features
+
 ## Architecture
 
 - **Backend**: Python/Flask on the Pi, serves localhost
@@ -328,6 +332,8 @@ You can also edit `data/settings.json` directly:
 
 ```
 home-launchpad/
+├── implementation.md       # Setup guide for non-technical users
+├── updates.md              # How to update, change settings, request features
 ├── app.py                  # Flask server + API routes
 ├── config.py               # Configuration & settings
 ├── weather.py              # Open-Meteo weather API
