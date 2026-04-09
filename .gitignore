@@ -1,7 +1,9 @@
 # Secrets & credentials
 client_secret*.json
 data/google_token.json
+data/todoist_token.txt
 *.credentials.json
+sync/sync_config.json
 
 # Data files (generated at runtime)
 data/*.json

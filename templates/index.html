@@ -1090,6 +1090,16 @@ h2.section-title:first-child { margin-top: 0; }
           <input class="settings-input" id="setting-sheet" type="text" placeholder="Google Sheet ID">
         </div>
         <div class="settings-row">
+          <span class="settings-label">Lists Backend</span>
+          <select class="settings-input" id="setting-lists-backend">
+            <option value="apple_sync">Apple Reminders (Mac sync)</option>
+            <option value="todoist">Todoist</option>
+            <option value="google_tasks">Google Tasks</option>
+            <option value="local">Local only</option>
+          </select>
+        </div>
+        <div id="backend-setup-hint" class="settings-hint" style="padding:6px 0 0 0; font-size:0.85em; opacity:0.7;"></div>
+        <div class="settings-row">
           <span class="settings-label">Google Account</span>
           <span id="google-status"></span>
         </div>
@@ -1521,6 +1531,10 @@ async function loadHome() {
     document.getElementById('setting-lon').value = settings.longitude || '';
     document.getElementById('setting-sheet').value = settings.budget_sheet_id || '';
     document.getElementById('setting-theme').value = localStorage.getItem('dashboard-theme') || settings.theme || 'light';
+    const backendSel = document.getElementById('setting-lists-backend');
+    backendSel.value = settings.lists_backend || 'apple_sync';
+    updateBackendHint();
+    backendSel.addEventListener('change', updateBackendHint);
     if (settings.background_url) applyBackground(settings.background_url);
     const gc = settings.google_connected;
     document.getElementById('google-status').innerHTML =
@@ -1822,6 +1836,17 @@ function loadThemeAndBackground() {
 /* ============================================================
    SETTINGS
    ============================================================ */
+function updateBackendHint() {
+  const val = document.getElementById('setting-lists-backend').value;
+  const hints = {
+    apple_sync: 'Syncs from Apple Reminders on your Mac. Requires the sync script running on a Mac with SSH access to this Pi.',
+    todoist: 'Uses Todoist API. Save your API token to data/todoist_token.txt on the Pi. Get it from todoist.com/app/settings/integrations/developer',
+    google_tasks: 'Uses Google Tasks API. Enable Tasks API in your Google Cloud project and re-run setup_google_oauth.py.',
+    local: 'Lists are stored locally on this device only. No sync with external services.',
+  };
+  document.getElementById('backend-setup-hint').textContent = hints[val] || '';
+}
+
 async function saveSettings() {
   const theme = document.getElementById('setting-theme').value;
   applyTheme(theme);
@@ -1833,9 +1858,10 @@ async function saveSettings() {
       longitude: parseFloat(document.getElementById('setting-lon').value) || 0,
       budget_sheet_id: document.getElementById('setting-sheet').value,
       theme: theme,
+      lists_backend: document.getElementById('setting-lists-backend').value,
     })
   });
-  showToast('Settings saved');
+  showToast('Settings saved — restart the dashboard service for backend changes to take effect');
 }
 
 async function refreshAll() {

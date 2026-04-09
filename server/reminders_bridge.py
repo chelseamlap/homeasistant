@@ -1,15 +1,16 @@
 """
-Reminders bridge with multiple backends:
+Reminders/Tasks bridge with configurable backends:
 
-1. macOS native (JXA) — used on Mac, reads/writes the Reminders app directly.
-2. Google Tasks — used on Raspberry Pi or any non-Mac. Uses the Google Tasks
-   API (same OAuth as Calendar/Sheets). Full read/write for all lists.
-3. CalDAV (iCloud) — legacy fallback for non-Mac if Google Tasks unavailable.
-4. Local JSON — fallback when none of the above is available.
+1. apple_sync — Mac syncs Apple Reminders to Pi via JSON (bidirectional)
+2. todoist   — Todoist REST API (shared lists, works anywhere)
+3. google_tasks — Google Tasks API (same OAuth as Calendar/Sheets)
+4. local     — Local JSON files (no sync, dashboard-only)
 
-For Google Tasks (Raspberry Pi):
-  Enable the Google Tasks API in your Cloud project and re-run
-  setup_google_oauth.py to authorize the Tasks scope.
+On macOS, always uses native JXA for direct Apple Reminders access,
+regardless of the backend setting (the setting only affects the Pi).
+
+The backend is configured via the 'lists_backend' key in data/settings.json.
+Change it from the Home > Settings panel on the dashboard.
 """
 import os
 import json
@@ -27,16 +28,198 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 _IS_MACOS = platform.system() == "Darwin"
 
-# Google Tasks support for non-macOS (Raspberry Pi)
-_GOOGLE_TASKS_AVAILABLE = False
-try:
-    from server import google_tasks
-    _GOOGLE_TASKS_AVAILABLE = True
-except ImportError:
-    if not _IS_MACOS:
-        logger.warning("google_tasks not available — check Google OAuth setup")
+# Lazy-loaded backend modules
+_todoist_mod = None
+_google_tasks_mod = None
 
-# CalDAV support (legacy fallback for non-macOS)
+
+def _get_backend():
+    """Read the configured backend from settings. Returns one of:
+    'apple_sync', 'todoist', 'google_tasks', 'local'."""
+    if _IS_MACOS:
+        return "macos"
+    settings_path = os.path.join(DATA_DIR, "settings.json")
+    if os.path.exists(settings_path):
+        with open(settings_path) as f:
+            settings = json.load(f)
+        return settings.get("lists_backend", "apple_sync")
+    return "apple_sync"
+
+
+def _get_todoist():
+    global _todoist_mod
+    if _todoist_mod is None:
+        try:
+            from server import todoist as _mod
+            _todoist_mod = _mod
+        except ImportError:
+            logger.error("todoist module not available")
+            return None
+    return _todoist_mod
+
+
+def _get_google_tasks():
+    global _google_tasks_mod
+    if _google_tasks_mod is None:
+        try:
+            from server import google_tasks as _mod
+            _google_tasks_mod = _mod
+        except ImportError:
+            logger.error("google_tasks module not available")
+            return None
+    return _google_tasks_mod
+
+
+# ---- Apple Sync backend (reads JSON exported by Mac, queues changes) ----
+
+_SYNC_FILE = os.path.join(DATA_DIR, "reminders_sync.json")
+_PENDING_FILE = os.path.join(DATA_DIR, "reminders_pending.json")
+
+
+def _load_sync_data():
+    """Load the sync export from the Mac."""
+    if not os.path.exists(_SYNC_FILE):
+        return None
+    try:
+        with open(_SYNC_FILE) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.error("Failed to load sync file: %s", e)
+        return None
+
+
+def _queue_pending(change):
+    """Add a change to the pending queue for the Mac to pick up."""
+    pending = []
+    if os.path.exists(_PENDING_FILE):
+        try:
+            with open(_PENDING_FILE) as f:
+                pending = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pending = []
+    change["timestamp"] = datetime.now().isoformat()
+    pending.append(change)
+    with open(_PENDING_FILE, "w") as f:
+        json.dump(pending, f, indent=2)
+
+
+def _sync_discover_lists():
+    data = _load_sync_data()
+    if not data:
+        return None
+    result = []
+    for name, items in data.get("lists", {}).items():
+        result.append({
+            "name": name,
+            "id": name,
+            "account": "Apple (synced)",
+            "color": None,
+            "count": len(items),
+        })
+    return result
+
+
+def _sync_get_items(list_name):
+    data = _load_sync_data()
+    if not data:
+        return None
+    lists = data.get("lists", {})
+    # Case-insensitive lookup
+    for name, items in lists.items():
+        if name.lower() == list_name.lower():
+            return items
+    return None
+
+
+def _sync_add_item(list_name, title):
+    _queue_pending({"action": "add", "list": list_name, "title": title})
+    # Also add locally so it shows immediately
+    new_item = {
+        "id": f"pending_{datetime.now().timestamp()}",
+        "title": title,
+        "completed": False,
+        "completed_date": None,
+        "created": datetime.now().isoformat(),
+    }
+    # Update sync file in place for immediate display
+    data = _load_sync_data()
+    if data:
+        for name in data.get("lists", {}):
+            if name.lower() == list_name.lower():
+                data["lists"][name].append(new_item)
+                with open(_SYNC_FILE, "w") as f:
+                    json.dump(data, f, indent=2)
+                break
+    return new_item
+
+
+def _sync_complete(list_name, item_id, completed):
+    action = "complete" if completed else "uncomplete"
+    _queue_pending({"action": action, "list": list_name, "item_id": item_id})
+    # Update sync file for immediate display
+    data = _load_sync_data()
+    if data:
+        for name, items in data.get("lists", {}).items():
+            if name.lower() == list_name.lower():
+                for item in items:
+                    if item["id"] == item_id:
+                        item["completed"] = completed
+                        item["completed_date"] = datetime.now().isoformat() if completed else None
+                        break
+                with open(_SYNC_FILE, "w") as f:
+                    json.dump(data, f, indent=2)
+                break
+    return {"ok": True}
+
+
+def _sync_delete(list_name, item_id):
+    _queue_pending({"action": "delete", "list": list_name, "item_id": item_id})
+    data = _load_sync_data()
+    if data:
+        for name, items in data.get("lists", {}).items():
+            if name.lower() == list_name.lower():
+                data["lists"][name] = [i for i in items if i["id"] != item_id]
+                with open(_SYNC_FILE, "w") as f:
+                    json.dump(data, f, indent=2)
+                break
+    return {"ok": True}
+
+
+def _sync_update(list_name, item_id, new_title):
+    _queue_pending({"action": "update", "list": list_name, "item_id": item_id, "title": new_title})
+    data = _load_sync_data()
+    if data:
+        for name, items in data.get("lists", {}).items():
+            if name.lower() == list_name.lower():
+                for item in items:
+                    if item["id"] == item_id:
+                        item["title"] = new_title
+                        break
+                with open(_SYNC_FILE, "w") as f:
+                    json.dump(data, f, indent=2)
+                break
+    return {"ok": True}
+
+
+def _sync_reset(list_name):
+    _queue_pending({"action": "reset", "list": list_name})
+    count = 0
+    data = _load_sync_data()
+    if data:
+        for name, items in data.get("lists", {}).items():
+            if name.lower() == list_name.lower():
+                for item in items:
+                    if item.get("completed"):
+                        item["completed"] = False
+                        item["completed_date"] = None
+                        count += 1
+                with open(_SYNC_FILE, "w") as f:
+                    json.dump(data, f, indent=2)
+                break
+    return {"ok": True, "reset": count}
+
+
+# CalDAV support (legacy)
 _CALDAV_AVAILABLE = False
 _caldav_principal = None
 
@@ -44,8 +227,7 @@ try:
     import caldav
     _CALDAV_AVAILABLE = True
 except ImportError:
-    if not _IS_MACOS:
-        logger.info("caldav not installed — using Google Tasks or local fallback")
+    pass
 
 
 # ---- Local JSON storage (fallback + reset tracking) ----
@@ -529,89 +711,124 @@ def _caldav_discover_lists():
         return None
 
 
-# Determine which remote backend to use
-_USE_GOOGLE_TASKS = not _IS_MACOS and _GOOGLE_TASKS_AVAILABLE
-_USE_CALDAV = not _IS_MACOS and _CALDAV_AVAILABLE and not _USE_GOOGLE_TASKS
-
-
-# ---- Public API (dispatches to macOS native, Google Tasks, CalDAV, or local JSON) ----
+# ---- Public API (dispatches based on configured backend) ----
 
 def discover_lists():
-    """Discover all available Reminders/Tasks lists from the system.
+    """Discover all available lists from the active backend.
     Returns list of dicts: [{name, id, account, color, count}, ...]
     """
-    if _IS_MACOS:
+    backend = _get_backend()
+    if backend == "macos":
         result = _macos_discover_lists()
         if result is not None:
             return result
-    if _USE_GOOGLE_TASKS:
-        result = google_tasks.discover_lists()
+    elif backend == "apple_sync":
+        result = _sync_discover_lists()
         if result is not None:
             return result
-    if _USE_CALDAV:
-        result = _caldav_discover_lists()
-        if result is not None:
-            return result
+    elif backend == "todoist":
+        mod = _get_todoist()
+        if mod:
+            result = mod.discover_lists()
+            if result is not None:
+                return result
+    elif backend == "google_tasks":
+        mod = _get_google_tasks()
+        if mod:
+            result = mod.discover_lists()
+            if result is not None:
+                return result
     return []
 
+
 def _remote_get_items(list_name):
-    if _IS_MACOS:
+    backend = _get_backend()
+    if backend == "macos":
         return _macos_get_items(list_name)
-    if _USE_GOOGLE_TASKS:
-        return google_tasks.get_items(list_name)
-    if _USE_CALDAV:
-        return _caldav_get_items(list_name)
+    elif backend == "apple_sync":
+        return _sync_get_items(list_name)
+    elif backend == "todoist":
+        mod = _get_todoist()
+        return mod.get_items(list_name) if mod else None
+    elif backend == "google_tasks":
+        mod = _get_google_tasks()
+        return mod.get_items(list_name) if mod else None
     return None
 
 
 def _remote_add_item(list_name, title):
-    if _IS_MACOS:
+    backend = _get_backend()
+    if backend == "macos":
         return _macos_add_item(list_name, title)
-    if _USE_GOOGLE_TASKS:
-        return google_tasks.add_item(list_name, title)
-    if _USE_CALDAV:
-        return _caldav_add_item(list_name, title)
+    elif backend == "apple_sync":
+        return _sync_add_item(list_name, title)
+    elif backend == "todoist":
+        mod = _get_todoist()
+        return mod.add_item(list_name, title) if mod else None
+    elif backend == "google_tasks":
+        mod = _get_google_tasks()
+        return mod.add_item(list_name, title) if mod else None
     return None
 
 
 def _remote_complete(list_name, item_id, completed):
-    if _IS_MACOS:
+    backend = _get_backend()
+    if backend == "macos":
         fn = _macos_complete_item if completed else _macos_uncomplete_item
         return fn(list_name, item_id)
-    if _USE_GOOGLE_TASKS:
-        return google_tasks.set_completed(list_name, item_id, completed)
-    if _USE_CALDAV:
-        return _caldav_set_completed(list_name, item_id, completed)
+    elif backend == "apple_sync":
+        return _sync_complete(list_name, item_id, completed)
+    elif backend == "todoist":
+        mod = _get_todoist()
+        return mod.set_completed(list_name, item_id, completed) if mod else None
+    elif backend == "google_tasks":
+        mod = _get_google_tasks()
+        return mod.set_completed(list_name, item_id, completed) if mod else None
     return None
 
 
 def _remote_delete(list_name, item_id):
-    if _IS_MACOS:
+    backend = _get_backend()
+    if backend == "macos":
         return _macos_delete_item(list_name, item_id)
-    if _USE_GOOGLE_TASKS:
-        return google_tasks.delete_item(list_name, item_id)
-    if _USE_CALDAV:
-        return _caldav_delete_item(list_name, item_id)
+    elif backend == "apple_sync":
+        return _sync_delete(list_name, item_id)
+    elif backend == "todoist":
+        mod = _get_todoist()
+        return mod.delete_item(list_name, item_id) if mod else None
+    elif backend == "google_tasks":
+        mod = _get_google_tasks()
+        return mod.delete_item(list_name, item_id) if mod else None
     return None
 
 
 def _remote_update(list_name, item_id, new_title):
-    if _IS_MACOS:
+    backend = _get_backend()
+    if backend == "macos":
         return _macos_update_item(list_name, item_id, new_title)
-    if _USE_GOOGLE_TASKS:
-        return google_tasks.update_item(list_name, item_id, new_title)
-    if _USE_CALDAV:
-        return _caldav_update_item(list_name, item_id, new_title)
+    elif backend == "apple_sync":
+        return _sync_update(list_name, item_id, new_title)
+    elif backend == "todoist":
+        mod = _get_todoist()
+        return mod.update_item(list_name, item_id, new_title) if mod else None
+    elif backend == "google_tasks":
+        mod = _get_google_tasks()
+        return mod.update_item(list_name, item_id, new_title) if mod else None
     return None
 
 
 def _remote_reset(list_name):
-    if _IS_MACOS:
+    backend = _get_backend()
+    if backend == "macos":
         return _macos_reset_list(list_name)
-    if _USE_GOOGLE_TASKS:
-        return google_tasks.reset_list(list_name)
-    if _USE_CALDAV:
-        return _caldav_reset_list(list_name)
+    elif backend == "apple_sync":
+        return _sync_reset(list_name)
+    elif backend == "todoist":
+        mod = _get_todoist()
+        return mod.reset_list(list_name) if mod else None
+    elif backend == "google_tasks":
+        mod = _get_google_tasks()
+        return mod.reset_list(list_name) if mod else None
     return None
 
 

@@ -232,7 +232,7 @@ def api_get_settings():
 def api_save_settings():
     data = request.get_json()
     settings = config.load_settings()
-    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme", "calendar_ids"]:
+    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme", "calendar_ids", "lists_backend"]:
         if key in data:
             settings[key] = data[key]
     config.save_settings(settings)
