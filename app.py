@@ -221,9 +221,10 @@ if __name__ == "__main__":
         system = platform.system()
         try:
             if system == "Darwin":
+                # --new-window ensures app mode even if Chrome is already running
                 subprocess.Popen([
-                    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                    f"--app={url}", "--start-maximized"
+                    "open", "-na", "Google Chrome", "--args",
+                    f"--app={url}", "--new-window"
                 ])
             elif system == "Linux":
                 subprocess.Popen(["chromium-browser", f"--app={url}", "--start-maximized"])
