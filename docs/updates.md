@@ -2,6 +2,8 @@
 
 > **Note:** Replace `your-username@your-pi-ip` in commands below with your Pi's actual username and IP address. Run `hostname -I` on the Pi to find its IP.
 
+> **Note:** If you installed before the rename, your service may be called `family-dashboard` instead of `home-launchpad`.
+
 How to make changes, update the Pi, and common things you might want to do.
 
 ---
@@ -15,13 +17,13 @@ Whenever changes are made to the code (by you or with Claude), get them onto the
 ```
 cd ~/git-repo/home-launchpad
 git pull
-sudo systemctl restart family-dashboard
+sudo systemctl restart home-launchpad
 ```
 
 ### From your Mac (remotely)
 
 ```
-ssh your-username@your-pi-ip "cd ~/git-repo/home-launchpad && git pull && sudo systemctl restart family-dashboard"
+ssh your-username@your-pi-ip "cd ~/git-repo/home-launchpad && git pull && sudo systemctl restart home-launchpad"
 ```
 
 Then refresh the browser on the Pi (or just wait — it refreshes itself every 5 minutes).
@@ -36,11 +38,13 @@ These don't require any code changes — just tap on the **Home** tab:
 |---|---|---|
 | Which Reminders lists show up | Home > Apple Reminders | Check/uncheck lists, star for Today tab, tap Save |
 | Which Google calendars show up | Home > Google Calendars | Check/uncheck calendars, tap Save |
-| Theme (Light/Dark/Warm) | Home > Appearance | Pick from the dropdown — changes instantly |
+| Theme (with auto option) | Home > Appearance | System (auto dark/light), Dark, Light, Warm |
 | Background photo | Home > Appearance | Tap "Choose File" to upload from the Pi |
 | Location & weather | Home > Settings | Type your city, lat/lon, and tap Save |
 | Budget sheet | Home > Settings | Paste your Google Sheet ID and tap Save |
-| Weekend plans | Today tab | Tap the Saturday/Sunday fields to type |
+| Lists backend | Home > Settings | Pick from dropdown: Apple Sync, Todoist, Google Tasks, Local |
+| Weekend plans | Today tab | Tap Saturday/Sunday fields — now saved to settings (survives restarts) |
+| Exit kiosk mode | Home > Settings | Tap "Exit Kiosk" to close Chrome and access the Pi desktop |
 | Add items to a list | Lists tab | Tap the "+" button at the bottom of any list |
 | Check off items | Today or Lists tab | Tap any row to mark it done |
 | Delete items | Today or Lists tab | Long-press (hold for ~1 second) to show the delete button |
@@ -85,7 +89,7 @@ If something looks wrong or the screen is frozen:
 ### Quick restart (from your Mac)
 
 ```
-ssh your-username@your-pi-ip "sudo systemctl restart family-dashboard"
+ssh your-username@your-pi-ip "sudo systemctl restart home-launchpad"
 ```
 
 ### Full reboot (from your Mac)
@@ -101,7 +105,7 @@ The Pi takes about 30 seconds to come back up. Chrome will reopen automatically.
 If you have a keyboard connected, press **Ctrl+Alt+T** to open a terminal, then:
 
 ```
-sudo systemctl restart family-dashboard
+sudo systemctl restart home-launchpad
 ```
 
 ---
@@ -134,13 +138,13 @@ When you want something new or different on the dashboard, here's how to work wi
 The server might not be running:
 
 ```
-ssh your-username@your-pi-ip "sudo systemctl status family-dashboard"
+ssh your-username@your-pi-ip "sudo systemctl status home-launchpad"
 ```
 
 If it says "failed", restart it:
 
 ```
-ssh your-username@your-pi-ip "sudo systemctl restart family-dashboard"
+ssh your-username@your-pi-ip "sudo systemctl restart home-launchpad"
 ```
 
 ### Calendar is missing events
@@ -149,11 +153,22 @@ Go to **Home > Google Calendars** on the touchscreen and make sure all your cale
 
 ### Reminders aren't syncing
 
-Check that `data/icloud_creds.json` has the right Apple ID and app-specific password. If Apple changed something, you may need to generate a new app-specific password at https://appleid.apple.com.
+Check which backend is selected in **Home > Settings > Lists Backend**:
+- **Apple Sync**: Make sure the Mac sync script is running (`cat /tmp/home-launchpad-sync.log` on the Mac)
+- **Todoist**: Verify the API token in `data/todoist_token.txt`
+- **Google Tasks**: Re-run `python3 setup_google_oauth.py` if the token expired
 
 ### Weather is wrong or missing
 
 Go to **Home > Settings** and check that latitude/longitude are correct for your location. Find your coordinates at https://www.latlong.net/
+
+### Kiosk mode — can't access the desktop
+
+Go to **Home > Settings** and tap **Exit Kiosk**. This closes Chrome so you can access the Pi desktop. To re-enter kiosk mode, reboot or run: `chromium --kiosk --password-store=basic --app=http://localhost:5000`
+
+### Lists showing old/fallback data
+
+Check which backend is selected in **Home > Settings > Lists Backend**. If using Apple Sync, make sure the Mac sync script is running. If using Todoist, verify the API token in `data/todoist_token.txt`.
 
 ### Screen went black / Chrome closed
 
@@ -161,7 +176,7 @@ SSH in and check if the service is running, then restart Chrome:
 
 ```
 ssh your-username@your-pi-ip
-sudo systemctl status family-dashboard  # should say "active (running)"
+sudo systemctl status home-launchpad  # should say "active (running)"
 DISPLAY=:0 chromium --start-maximized --app=http://localhost:5000 &
 ```
 
@@ -170,7 +185,7 @@ DISPLAY=:0 chromium --start-maximized --app=http://localhost:5000 &
 After pulling, you need to restart the service AND refresh the browser:
 
 ```
-ssh your-username@your-pi-ip "sudo systemctl restart family-dashboard"
+ssh your-username@your-pi-ip "sudo systemctl restart home-launchpad"
 ```
 
 Then tap the screen or press F5 on the Pi to refresh the browser.
@@ -196,9 +211,9 @@ The typical flow is:
 |---|---|
 | Connect to the Pi | `ssh your-username@your-pi-ip` |
 | Pull latest code | `cd ~/git-repo/home-launchpad && git pull` |
-| Restart the dashboard | `sudo systemctl restart family-dashboard` |
-| Check if dashboard is running | `sudo systemctl status family-dashboard` |
-| See error logs | `sudo journalctl -u family-dashboard -n 20 --no-pager` |
+| Restart the dashboard | `sudo systemctl restart home-launchpad` |
+| Check if dashboard is running | `sudo systemctl status home-launchpad` |
+| See error logs | `sudo journalctl -u home-launchpad -n 20 --no-pager` |
 | Reboot the Pi | `sudo reboot` |
 | Send a file to the Pi | `scp ~/path/to/file your-username@your-pi-ip:~/git-repo/home-launchpad/data/` |
 | Kill something on port 5000 | `sudo fuser -k 5000/tcp` |

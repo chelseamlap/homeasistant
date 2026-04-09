@@ -84,6 +84,7 @@ This is the most involved step but you only do it once.
 1. Go to **APIs & Services > Library** (in the left menu)
 2. Search for "Google Calendar API" and click **Enable**
 3. Search for "Google Sheets API" and click **Enable**
+4. Search for "Google Tasks API" and click **Enable**
 
 ### Create Login Credentials
 
@@ -116,32 +117,16 @@ This opens a browser on the Pi. Sign in with your family Google account and allo
 
 ---
 
-## Step 5: Set Up Apple Reminders (Optional)
+## Step 5: Choose Your Lists Backend
 
-This lets the dashboard show and sync your Apple Reminders lists.
+The dashboard supports multiple list/task services. On the Pi dashboard, go to **Home > Settings > Lists Backend** to choose:
 
-1. On your phone or Mac, go to https://appleid.apple.com
-2. Go to **Sign-In and Security > App-Specific Passwords**
-3. Click **+** to generate a new password. Name it "Dashboard" or similar.
-4. Copy the password (it looks like `xxxx-xxxx-xxxx-xxxx`)
-
-On the Pi (in your SSH window):
-
-```
-cd ~/git-repo/home-launchpad
-nano data/icloud_creds.json
-```
-
-Type this (replacing with your actual Apple ID and the password you just generated):
-
-```json
-{
-  "apple_id": "your-email@icloud.com",
-  "password": "xxxx-xxxx-xxxx-xxxx"
-}
-```
-
-Press **Ctrl+O** to save, then **Ctrl+X** to exit.
+| Backend | Best For | Setup |
+|---|---|---|
+| **Apple Reminders (Mac sync)** | Families already using Apple Reminders | Requires a Mac running the sync script. See [Mac Sync Setup](mac-sync-setup.md) |
+| **Todoist** | Shared lists, no Mac required | Free account at todoist.com. Get your API token from todoist.com/app/settings/integrations/developer, then save it on the Pi: `echo 'YOUR_TOKEN' > ~/git-repo/home-launchpad/data/todoist_token.txt` |
+| **Google Tasks** | Already using Google, no sharing needed | Enable the Google Tasks API in your Cloud project (same place you enabled Calendar/Sheets), then re-run `python3 setup_google_oauth.py` |
+| **Local only** | Simple, no external service | Lists stored on the Pi only. No sync. |
 
 ---
 
@@ -210,14 +195,16 @@ Check if the service is running:
 
 ```
 ssh your-username@your-pi-ip
-sudo systemctl status family-dashboard
+sudo systemctl status home-launchpad
 ```
 
 If it says "failed", check the error:
 
 ```
-sudo journalctl -u family-dashboard -n 20 --no-pager
+sudo journalctl -u home-launchpad -n 20 --no-pager
 ```
+
+> **Note:** If you installed before the rename, your service may be called `family-dashboard` instead. Use `sudo systemctl status family-dashboard` to check.
 
 ### Port 5000 is already in use
 
@@ -225,7 +212,7 @@ Something else is using the port. Kill it and restart:
 
 ```
 sudo fuser -k 5000/tcp
-sudo systemctl restart family-dashboard
+sudo systemctl restart home-launchpad
 ```
 
 ### Google Calendar isn't showing my events
@@ -235,6 +222,14 @@ Go to **Home > Google Calendars** and make sure all the calendars you want are c
 ### Weather shows the wrong location
 
 Go to **Home > Settings** and update the latitude/longitude. Find your coordinates at https://www.latlong.net/
+
+### Exit kiosk mode without a keyboard
+
+Go to **Home > Settings** on the touchscreen and tap **Exit Kiosk**. This closes Chrome so you can access the Pi desktop. To re-enter kiosk mode, reboot the Pi or run:
+
+```
+chromium --kiosk --password-store=basic --app=http://localhost:5000
+```
 
 ### I forgot the Pi's password
 

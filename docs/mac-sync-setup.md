@@ -95,7 +95,7 @@ If you're between Macs or don't have one available, switch the Pi to a different
 
 1. On the Pi dashboard, go to **Home > Settings**
 2. Change **Lists Backend** to **Todoist** or **Local only**
-3. Save and restart: `sudo systemctl restart family-dashboard`
+3. Save and restart: `sudo systemctl restart home-launchpad`
 
 The Pi will keep working — just with a different list source. You can switch back to Apple Sync when you have a Mac again.
 

@@ -10,7 +10,7 @@ A touch-optimized family command center for a 24" Dell touchscreen on a Raspberr
 
 - **Backend**: Python/Flask on the Pi, serves localhost
 - **Frontend**: Single-page HTML/CSS/JS, themeable (light/dark/warm), 1920x1080 landscape
-- **Lists**: Apple Reminders — native macOS (JXA) or CalDAV (Pi), with local JSON fallback
+- **Lists**: Apple Reminders — native macOS (JXA) with configurable Pi backend (Mac sync, Todoist, Google Tasks, or local JSON)
 - **Calendar**: Google Calendar API via OAuth2 (multi-calendar support)
 - **Budget**: Google Sheets API via OAuth2
 - **Weather**: Open-Meteo (free, no API key)
@@ -38,43 +38,36 @@ cd /home/pi/git-repo/home-launchpad
 pip install -r requirements.txt --break-system-packages
 ```
 
-### 2. Set Up Apple Reminders (CalDAV)
+## Lists Backend (Reminders/Tasks)
 
-On the Raspberry Pi, the dashboard connects to Apple Reminders via iCloud's CalDAV protocol. This gives full read/write access to your Reminders lists.
+The dashboard supports multiple list backends, configurable from **Home > Settings > Lists Backend** on the touchscreen:
 
-1. **Generate an app-specific password** at https://appleid.apple.com → Sign-In and Security → App-Specific Passwords
+| Backend | Shared Lists? | Requires |
+|---|---|---|
+| **Apple Reminders (Mac sync)** | Yes | A Mac running the sync script (see [Mac Sync Setup](docs/mac-sync-setup.md)) |
+| **Todoist** | Yes | Free Todoist account + API token in `data/todoist_token.txt` |
+| **Google Tasks** | No | Google Tasks API enabled + OAuth re-authorization |
+| **Local only** | No | Nothing — lists stored on Pi only |
 
-2. **Create the credentials file** `data/icloud_creds.json`:
+On macOS, the dashboard always uses native Apple Reminders access (JXA) regardless of this setting.
 
-   ```json
-   {
-     "apple_id": "you@icloud.com",
-     "password": "xxxx-xxxx-xxxx-xxxx"
-   }
-   ```
+### 2. Set Up Google OAuth2
 
-3. **Choose which lists to display** from the Home tab → Apple Reminders section. The dashboard auto-discovers all lists available to the configured Apple ID.
-
-If CalDAV isn't configured, the dashboard falls back to local JSON files in `data/`. You can manage everything from the touchscreen — you just won't get sync with your phones.
-
-> **Note on shared lists**: Each Apple ID can only see its own lists and lists explicitly shared *to* it. If both household members have Reminders lists you want on the dashboard, you'll need to configure both Apple IDs. Multi-account support is planned — for now, configure the account that owns the most lists you want to display, and have the other person share their lists to that account.
-
-### 4. Set Up Google OAuth2
-
-You need a Google Cloud project with Calendar API and Sheets API enabled.
+You need a Google Cloud project with Calendar API, Sheets API, and Tasks API enabled.
 
 ```
 1. Go to https://console.cloud.google.com/
-2. Create a new project: "Family Dashboard"
+2. Create a new project: "Home Launchpad"
 3. Go to APIs & Services → Library
 4. Enable: Google Calendar API
 5. Enable: Google Sheets API
-6. Go to APIs & Services → Credentials
-7. Click "Create Credentials" → "OAuth client ID"
-8. Application type: "Desktop app"
-9. Download the JSON file
-10. Rename it to client_secret.json
-11. Place it in /home/pi/git-repo/home-launchpad/
+6. Enable: Google Tasks API
+7. Go to APIs & Services → Credentials
+8. Click "Create Credentials" → "OAuth client ID"
+9. Application type: "Desktop app"
+10. Download the JSON file
+11. Rename it to client_secret.json
+12. Place it in /home/pi/git-repo/home-launchpad/
 ```
 
 **Run the OAuth flow:**
@@ -84,13 +77,13 @@ cd /home/pi/git-repo/home-launchpad
 python3 setup_google_oauth.py
 ```
 
-This opens a browser. Sign in with your family Google account and grant Calendar + Sheets read access. The token is stored locally in `data/google_token.json`.
+This opens a browser. Sign in with your family Google account and grant Calendar, Sheets, and Tasks access. The token is stored locally in `data/google_token.json`.
 
-### 5. Configure Google Calendars
+### 3. Configure Google Calendars
 
 After connecting your Google account, go to **Home > Google Calendars** to select which calendars appear on the dashboard. The dashboard auto-discovers all calendars on the connected account (primary, shared, family, etc.). By default, only the primary calendar is shown.
 
-### 6. Set Up the Google Sheet for Budget
+### 4. Set Up the Google Sheet for Budget
 
 Create a Google Sheet with two tabs:
 
@@ -113,7 +106,7 @@ Create a Google Sheet with two tabs:
 
 Copy the Sheet ID from the URL (the long string between `/d/` and `/edit`). You'll enter this in the dashboard's Home tab settings.
 
-### 7. Configure Location
+### 5. Configure Location
 
 On first launch, go to the **Home** tab and enter:
 - Your city name (for display)
@@ -122,7 +115,7 @@ On first launch, go to the **Home** tab and enter:
 
 Find your coordinates at https://www.latlong.net/
 
-### 8. Launch the Dashboard
+### 6. Launch the Dashboard
 
 ```bash
 cd /home/pi/git-repo/home-launchpad
@@ -131,7 +124,7 @@ python3 app.py
 
 The server starts on port 5000 by default.
 
-### 9. Launch Chrome in Kiosk Mode
+### 7. Launch Chrome in Kiosk Mode
 
 ```bash
 chromium --kiosk --noerrdialogs --disable-infobars --app=http://localhost:5000
@@ -139,7 +132,7 @@ chromium --kiosk --noerrdialogs --disable-infobars --app=http://localhost:5000
 
 This opens Chrome in true full-screen kiosk mode — no title bar, no address bar, no OS menu bar. Press **Alt+F4** to exit if needed.
 
-### 10. Auto-Start on Boot (Optional)
+### 8. Auto-Start on Boot (Optional)
 
 Create a systemd service:
 
@@ -149,7 +142,7 @@ sudo nano /etc/systemd/system/home-launchpad.service
 
 ```ini
 [Unit]
-Description=Family Dashboard
+Description=Home Launchpad
 After=network.target
 
 [Service]
@@ -207,13 +200,14 @@ A built-in on-screen keyboard appears when adding or editing items. It covers th
 
 ### Themes & Background Image
 
-The dashboard ships with three themes, selectable from **Home > Appearance**:
+The dashboard ships with four themes, selectable from **Home > Appearance**:
 
 | Theme | Description |
 |---|---|
 | **Light** (default) | Clean light theme inspired by Home Assistant |
 | **Dark** | Dark blue-gray theme |
 | **Warm** | Soft warm tones |
+| **System** | Auto dark at night, light by day |
 
 Theme choice is saved per-browser (instant) and also synced to `settings.json` so all devices use the same default.
 
@@ -276,21 +270,25 @@ pip install -r requirements.txt --break-system-packages
 
 ---
 
-## Apple Reminders Integration
+## Apple Reminders / Lists Integration
 
-The dashboard connects to Apple Reminders with three backends, chosen automatically:
+The dashboard supports five list backends:
 
-| Platform | Backend | Setup Required |
+| Backend | Platform | Description |
 |---|---|---|
-| **macOS** (development) | Native JXA via osascript | None — reads the Reminders app directly |
-| **Raspberry Pi / Linux** | CalDAV via iCloud | App-specific password in `data/icloud_creds.json` |
-| **Fallback** | Local JSON files | None — works offline, no sync |
+| **macOS native (JXA)** | macOS only | Always used on Mac — reads/writes the Reminders app directly via osascript |
+| **Apple Sync** | Pi | A Mac exports Reminders JSON to the Pi via SSH on a schedule (see [Mac Sync Setup](docs/mac-sync-setup.md)) |
+| **Todoist** | Pi | REST API integration — supports shared projects, two-way sync |
+| **Google Tasks** | Pi | Uses your existing Google OAuth credentials — no extra setup beyond enabling the API |
+| **Local JSON** | Any | Fallback when nothing else is available — lists stored on-device only, no sync |
+
+On macOS, native JXA is always used regardless of the configured backend. On the Pi, choose your backend from **Home > Settings > Lists Backend**.
 
 ### Configuring Lists
 
-Lists are configured from the **Home tab → Apple Reminders** section:
+Lists are configured from the **Home tab → Lists** section:
 
-1. The dashboard auto-discovers all available lists from your Apple account
+1. The dashboard auto-discovers all available lists from your configured backend
 2. Each list has two checkboxes: **Lists Tab** (shows on the Lists tab) and **Today Tab** (shows on the Today tab)
 3. Lists on the Today tab appear side-by-side at half width
 4. Hit "Save List Selection" — config is stored in `data/settings.json`
@@ -309,20 +307,14 @@ You can also edit `data/settings.json` directly:
 
 ### How Sync Works
 
-- All operations (add, complete, delete, edit) go directly to Apple Reminders and sync via iCloud to all your devices
+- All operations (add, complete, delete, edit) go to the configured backend and sync to connected devices
 - If the remote backend is unreachable, operations fall back to local JSON files
 - The dashboard refreshes data every 5 minutes
-
-### Known Limitations
-
-- **Shared lists visibility**: On macOS, the JXA scripting API only sees lists owned by or explicitly shared *to* the logged-in user. Lists shared from another family member's account may not appear in auto-discovery. On CalDAV (Pi), only lists accessible to the configured Apple ID are visible.
-- **Multi-account**: The dashboard currently supports one Apple ID at a time. If both household members have lists they want on the dashboard, the workaround is to share those lists to one account. Multi-account CalDAV support (configuring multiple Apple IDs) is planned for a future update.
 
 ---
 
 ## Planned Integrations
 
-- **Multi-account Apple Reminders**: Support multiple Apple IDs so both household members' lists appear on the dashboard
 - **Google Home / Chromecast**: Show "Now Playing" track info from Google Home speakers
 - **Ecobee Thermostat**: Display current temperature, set point, and HVAC mode
 
@@ -339,21 +331,28 @@ home-launchpad/
 ├── .gitignore              # Excludes secrets & data files from git
 ├── docs/
 │   ├── implementation.md   # Setup guide for non-technical users
-│   └── updates.md          # How to update, change settings, request features
+│   ├── updates.md          # How to update, change settings, request features
+│   └── mac-sync-setup.md   # How to set up Mac → Pi reminders sync
 ├── server/
 │   ├── __init__.py
 │   ├── weather.py          # Open-Meteo weather API
-│   ├── reminders_bridge.py # Apple Reminders bridge (JXA / CalDAV / local JSON)
+│   ├── reminders_bridge.py # Lists backend dispatcher (JXA / sync / Todoist / Google Tasks / local)
 │   ├── google_auth.py      # Google OAuth2 handler
 │   ├── google_calendar.py  # Google Calendar API (multi-calendar)
 │   ├── google_sheets.py    # Google Sheets API (budget)
+│   ├── google_tasks.py     # Google Tasks API (lists backend)
+│   ├── todoist.py          # Todoist REST API (lists backend)
 │   └── setup_google_oauth.py # One-time OAuth setup script
+├── sync/
+│   ├── reminders_sync.py       # Exports Apple Reminders to JSON for Pi sync
+│   ├── setup_mac_sync.sh       # One-time setup script for Mac sync
+│   └── com.home-launchpad.reminders-sync.plist  # launchd schedule for auto-sync
 ├── templates/
 │   └── index.html          # Full single-page dashboard UI
 ├── client_secret.json      # (you provide, gitignored) Google OAuth credentials
 └── data/                   # (auto-created, gitignored) runtime data
     ├── settings.json
     ├── google_token.json
-    ├── icloud_creds.json   # (optional) Apple ID for Reminders sync
+    ├── todoist_token.txt    # (optional) Todoist API token
     └── reminders_*.json    # Local list data
 ```
