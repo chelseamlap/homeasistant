@@ -37,7 +37,7 @@ BUDGET_SHEET_ID = os.environ.get("BUDGET_SHEET_ID", "")
 REFRESH_INTERVAL_MS = 5 * 60 * 1000  # 5 minutes
 
 # --- Flask ---
-SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "family-dashboard-secret-change-me")
+SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "home-launchpad-secret-change-me")
 PORT = int(os.environ.get("DASHBOARD_PORT", 5000))
 
 

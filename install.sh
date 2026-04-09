@@ -113,9 +113,9 @@ echo ""
 read -p "Install as a system service (auto-start on boot)? (y/n): " INSTALL_SERVICE
 if [[ "$INSTALL_SERVICE" == "y" ]]; then
     DASHBOARD_DIR=$(pwd)
-    sudo tee /etc/systemd/system/family-dashboard.service > /dev/null << EOF
+    sudo tee /etc/systemd/system/home-launchpad.service > /dev/null << EOF
 [Unit]
-Description=Family Home Dashboard
+Description=The Home Launchpad
 After=network.target
 
 [Service]
@@ -132,8 +132,8 @@ WantedBy=multi-user.target
 EOF
 
     sudo systemctl daemon-reload
-    sudo systemctl enable family-dashboard
-    sudo systemctl start family-dashboard
+    sudo systemctl enable home-launchpad
+    sudo systemctl start home-launchpad
     echo "✓ Service installed and started"
 else
     echo "→ To start manually: python3 app.py"
@@ -155,7 +155,7 @@ if [[ "$AUTO_CHROME" == "y" ]]; then
     # Method 1: XDG autostart (works on most desktop environments)
     XDG_DIR="$HOME/.config/autostart"
     mkdir -p "$XDG_DIR"
-    cat > "$XDG_DIR/family-dashboard.desktop" << EOF
+    cat > "$XDG_DIR/home-launchpad.desktop" << EOF
 [Desktop Entry]
 Type=Application
 Name=Family Dashboard
@@ -163,13 +163,13 @@ Comment=Launch Family Dashboard in Chrome kiosk mode
 Exec=bash -c 'sleep 5 && $CHROME_CMD'
 X-GNOME-Autostart-enabled=true
 EOF
-    echo "✓ XDG autostart entry created ($XDG_DIR/family-dashboard.desktop)"
+    echo "✓ XDG autostart entry created ($XDG_DIR/home-launchpad.desktop)"
     INSTALLED=true
 
     # Method 2: LXDE (older Raspberry Pi OS)
     LXDE_DIR="$HOME/.config/lxsession/LXDE-pi"
     if [ -d "$LXDE_DIR" ]; then
-        if ! grep -q "family-dashboard" "$LXDE_DIR/autostart" 2>/dev/null; then
+        if ! grep -q "home-launchpad" "$LXDE_DIR/autostart" 2>/dev/null; then
             echo "@bash -c 'sleep 5 && $CHROME_CMD'" >> "$LXDE_DIR/autostart"
             echo "✓ LXDE autostart entry added"
         fi
@@ -178,12 +178,12 @@ EOF
     # Method 3: Wayfire (Raspberry Pi OS Bookworm+)
     WAYFIRE_INI="$HOME/.config/wayfire.ini"
     if [ -f "$WAYFIRE_INI" ]; then
-        if ! grep -q "family-dashboard" "$WAYFIRE_INI" 2>/dev/null; then
+        if ! grep -q "home-launchpad" "$WAYFIRE_INI" 2>/dev/null; then
             # Add to [autostart] section
             if grep -q "\[autostart\]" "$WAYFIRE_INI"; then
-                sed -i "/\[autostart\]/a family-dashboard = bash -c 'sleep 5 && $CHROME_CMD'" "$WAYFIRE_INI"
+                sed -i "/\[autostart\]/a home-launchpad = bash -c 'sleep 5 && $CHROME_CMD'" "$WAYFIRE_INI"
             else
-                echo -e "\n[autostart]\nfamily-dashboard = bash -c 'sleep 5 && $CHROME_CMD'" >> "$WAYFIRE_INI"
+                echo -e "\n[autostart]\nhome-launchpad = bash -c 'sleep 5 && $CHROME_CMD'" >> "$WAYFIRE_INI"
             fi
             echo "✓ Wayfire autostart entry added"
         fi

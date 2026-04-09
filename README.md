@@ -26,11 +26,11 @@ python3 --version
 
 # Clone or copy the project
 cd /home/pi
-mkdir family-dashboard
+mkdir home-launchpad
 # (copy all project files here)
 
 # Install Python packages
-cd /home/pi/family-dashboard
+cd /home/pi/git-repo/home-launchpad
 pip install -r requirements.txt --break-system-packages
 ```
 
@@ -70,13 +70,13 @@ You need a Google Cloud project with Calendar API and Sheets API enabled.
 8. Application type: "Desktop app"
 9. Download the JSON file
 10. Rename it to client_secret.json
-11. Place it in /home/pi/family-dashboard/
+11. Place it in /home/pi/git-repo/home-launchpad/
 ```
 
 **Run the OAuth flow:**
 
 ```bash
-cd /home/pi/family-dashboard
+cd /home/pi/git-repo/home-launchpad
 python3 setup_google_oauth.py
 ```
 
@@ -117,7 +117,7 @@ Find your coordinates at https://www.latlong.net/
 ### 7. Launch the Dashboard
 
 ```bash
-cd /home/pi/family-dashboard
+cd /home/pi/git-repo/home-launchpad
 python3 app.py
 ```
 
@@ -136,7 +136,7 @@ This opens Chrome in "app mode" — no address bar, no tabs — but the user can
 Create a systemd service:
 
 ```bash
-sudo nano /etc/systemd/system/family-dashboard.service
+sudo nano /etc/systemd/system/home-launchpad.service
 ```
 
 ```ini
@@ -147,7 +147,7 @@ After=network.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/family-dashboard
+WorkingDirectory=/home/pi/git-repo/home-launchpad
 ExecStart=/usr/bin/python3 app.py
 Restart=always
 RestartSec=5
@@ -157,8 +157,8 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-sudo systemctl enable family-dashboard
-sudo systemctl start family-dashboard
+sudo systemctl enable home-launchpad
+sudo systemctl start home-launchpad
 ```
 
 For auto-launching Chrome, add to `/home/pi/.config/lxsession/LXDE-pi/autostart`:
@@ -216,14 +216,14 @@ You can also set a **background image** (e.g., a family photo) from the Appearan
 From your laptop/desktop, use `scp` to copy the image directly to the Pi's data folder:
 
 ```bash
-scp ~/Pictures/family-photo.jpg pi@raspberrypi.local:/home/pi/family-dashboard/data/background.jpg
+scp ~/Pictures/family-photo.jpg your-username@your-pi-ip:/home/pi/git-repo/home-launchpad/data/background.jpg
 ```
 
 Then update `data/settings.json` on the Pi to point to it:
 
 ```bash
-ssh pi@raspberrypi.local
-cd /home/pi/family-dashboard
+ssh your-username@your-pi-ip
+cd /home/pi/git-repo/home-launchpad
 python3 -c "
 import json
 s = json.load(open('data/settings.json'))
@@ -242,14 +242,14 @@ Replace `raspberrypi.local` with your Pi's hostname or IP address, and adjust th
 When new changes are pushed to the repo, update the Pi:
 
 ```bash
-cd /home/pi/family-dashboard
+cd /home/pi/git-repo/home-launchpad
 git pull origin main
 ```
 
 If you're running the dashboard as a systemd service, restart it:
 
 ```bash
-sudo systemctl restart family-dashboard
+sudo systemctl restart home-launchpad
 ```
 
 If you're running it manually, stop the process (Ctrl+C) and relaunch:
@@ -323,7 +323,7 @@ You can also edit `data/settings.json` directly:
 ## File Structure
 
 ```
-family-dashboard/
+home-launchpad/
 ├── app.py                  # Flask server + API routes
 ├── config.py               # Configuration & settings
 ├── weather.py              # Open-Meteo weather API
