@@ -149,7 +149,7 @@ if [[ "$AUTO_CHROME" == "y" ]]; then
     else
         CHROMIUM_BIN="chromium"
     fi
-    CHROME_CMD="$CHROMIUM_BIN --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --app=http://localhost:5000"
+    CHROME_CMD="$CHROMIUM_BIN --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --password-store=basic --app=http://localhost:5000"
     # Wait-for-port script: waits up to 30s for the dashboard to be ready
     WAIT_CMD="for i in \$(seq 1 30); do curl -s http://localhost:5000 >/dev/null 2>&1 && break; sleep 1; done"
 
