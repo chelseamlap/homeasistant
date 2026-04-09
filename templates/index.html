@@ -847,11 +847,8 @@ h2.section-title:first-child { margin-top: 0; }
             <div id="daily-forecast" class="daily-strip"></div>
           </div>
 
-          <!-- Daily Chores -->
-          <div class="card">
-            <div class="card-title">Daily Chores</div>
-            <div id="today-chores"></div>
-          </div>
+          <!-- Today lists (populated dynamically from lists with show_on_today) -->
+          <div id="today-lists-container"></div>
 
           <!-- Google Home + Ecobee side by side -->
           <div class="widget-pair">
@@ -903,46 +900,8 @@ h2.section-title:first-child { margin-top: 0; }
          TAB 2: LISTS
          ============================================================ -->
     <div class="tab-panel" id="panel-lists">
-      <div class="lists-grid">
-        <div class="list-card">
-          <div class="card-title">Daily Chores</div>
-          <div class="list-card-items" id="list-daily-chores"></div>
-          <button class="add-btn" onclick="openAddItem('daily_chores')">
-            <span class="add-icon">+</span> Add chore
-          </button>
-        </div>
-
-        <div class="list-card">
-          <div class="card-title">Weekly Chores</div>
-          <div class="list-card-items" id="list-weekly-chores"></div>
-          <button class="add-btn" onclick="openAddItem('weekly_chores')">
-            <span class="add-icon">+</span> Add chore
-          </button>
-        </div>
-
-        <div class="list-card">
-          <div class="card-title">Things to Talk About</div>
-          <div class="list-card-items" id="list-things-to-talk-about"></div>
-          <button class="add-btn" onclick="openAddItem('things_to_talk_about')">
-            <span class="add-icon">+</span> Add topic
-          </button>
-        </div>
-
-        <div class="list-card">
-          <div class="card-title">Home Projects</div>
-          <div class="list-card-items" id="list-home-projects"></div>
-          <button class="add-btn" onclick="openAddItem('home_projects')">
-            <span class="add-icon">+</span> Add project
-          </button>
-        </div>
-
-        <div class="list-card">
-          <div class="card-title">Vacation Planning</div>
-          <div class="list-card-items" id="list-vacation-planning"></div>
-          <button class="add-btn" onclick="openAddItem('vacation_planning')">
-            <span class="add-icon">+</span> Add item
-          </button>
-        </div>
+      <div class="lists-grid" id="lists-grid">
+        <!-- Dynamically populated from /api/reminders/config -->
       </div>
     </div>
 
@@ -969,20 +928,21 @@ h2.section-title:first-child { margin-top: 0; }
          TAB 4: HOME
          ============================================================ -->
     <div class="tab-panel" id="panel-home">
-      <h2 class="section-title">Manage Chores</h2>
-      <div class="card">
-        <div class="card-title">Daily Chores</div>
-        <div id="manage-daily"></div>
-        <button class="add-btn" onclick="openAddItem('daily_chores')">
-          <span class="add-icon">+</span> Add daily chore
-        </button>
+      <h2 class="section-title">Manage Lists</h2>
+      <div id="manage-lists-container">
+        <!-- Dynamically populated from /api/reminders/config -->
       </div>
+
+      <h2 class="section-title">Apple Reminders</h2>
       <div class="card">
-        <div class="card-title">Weekly Chores</div>
-        <div id="manage-weekly"></div>
-        <button class="add-btn" onclick="openAddItem('weekly_chores')">
-          <span class="add-icon">+</span> Add weekly chore
-        </button>
+        <div style="margin-bottom:10px; color:var(--text-dim); font-size:0.95rem;">
+          Toggle which Reminders lists appear on the dashboard. Lists marked with a star show on the Today tab.
+        </div>
+        <div id="reminders-list-picker" class="loading">Discovering lists...</div>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn btn-primary" onclick="saveListConfig()">Save List Selection</button>
+          <button class="btn btn-outline" onclick="discoverLists()">Refresh Lists</button>
+        </div>
       </div>
 
       <h2 class="section-title">Settings</h2>
@@ -1339,6 +1299,13 @@ function cancelLongPress() {
   if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
 }
 
+/* Cached list config */
+let _listsConfig = null;
+async function getListsConfig() {
+  if (!_listsConfig) _listsConfig = await api('/api/reminders/config');
+  return _listsConfig || [];
+}
+
 /* Reload a single list */
 async function reloadList(listKey) {
   const data = await api(`/api/reminders/${listKey}`);
@@ -1347,16 +1314,13 @@ async function reloadList(listKey) {
   const containerId = 'list-' + listKey.replace(/_/g, '-');
   const el = document.getElementById(containerId);
   if (el) renderList(data.items, containerId, listKey);
-  // Update in Home tab
-  const manageId = 'manage-' + listKey.replace('_chores', '').replace('daily', 'daily').replace('weekly', 'weekly');
-  // Update Today tab chores
-  if (listKey === 'daily_chores') {
-    renderList(data.items, 'today-chores', listKey);
-    renderManageList(data.items, 'manage-daily', listKey);
-  }
-  if (listKey === 'weekly_chores') {
-    renderManageList(data.items, 'manage-weekly', listKey);
-  }
+  // Update in Today tab
+  const todayEl = document.getElementById('today-' + listKey);
+  if (todayEl) renderList(data.items, 'today-' + listKey, listKey);
+  // Update in Home/Manage tab
+  const manageEl = document.getElementById('manage-' + listKey);
+  if (manageEl) renderManageList(data.items, 'manage-' + listKey, listKey);
+  // Talk preview
   if (listKey === 'things_to_talk_about') {
     renderList(data.items, 'talk-preview', listKey, {limit: 5});
   }
@@ -1366,17 +1330,42 @@ async function reloadList(listKey) {
    DATA LOADING
    ============================================================ */
 async function loadToday() {
-  const [weather, todayEvents, weekEvents, chores, talk] = await Promise.all([
+  const lists = await getListsConfig();
+
+  // Build today-lists cards for lists with show_on_today
+  const container = document.getElementById('today-lists-container');
+  const todayLists = lists.filter(l => l.show_on_today);
+  container.innerHTML = todayLists.map(l => `
+    <div class="card">
+      <div class="card-title">${escHTML(l.name)}</div>
+      <div id="today-${l.key}"></div>
+    </div>
+  `).join('');
+
+  // Fetch data in parallel
+  const fetches = [
     api('/api/weather'),
     api('/api/calendar/today'),
     api('/api/calendar/week'),
-    api('/api/reminders/daily_chores'),
+    ...todayLists.map(l => api(`/api/reminders/${l.key}`)),
     api('/api/reminders/things_to_talk_about'),
-  ]);
+  ];
+  const results = await Promise.all(fetches);
+
+  const weather = results[0];
+  const todayEvents = results[1];
+  const weekEvents = results[2];
+  const listResults = results.slice(3, 3 + todayLists.length);
+  const talk = results[results.length - 1];
+
   renderWeatherCurrent(weather);
   renderEvents(todayEvents, 'today-events', false);
   renderEvents(weekEvents, 'week-events', true);
-  if (chores) renderList(chores.items, 'today-chores', 'daily_chores');
+
+  todayLists.forEach((l, i) => {
+    if (listResults[i]) renderList(listResults[i].items, 'today-' + l.key, l.key);
+  });
+
   if (talk) renderList(talk.items, 'talk-preview', 'things_to_talk_about', {limit: 5});
 
   // Weekend intentions from localStorage
@@ -1385,12 +1374,26 @@ async function loadToday() {
 }
 
 async function loadAllLists() {
-  const keys = ['daily_chores','weekly_chores','things_to_talk_about','home_projects','vacation_planning'];
-  const results = await Promise.all(keys.map(k => api(`/api/reminders/${k}`)));
+  const lists = await getListsConfig();
+
+  // Build list cards dynamically
+  const grid = document.getElementById('lists-grid');
+  grid.innerHTML = lists.map(l => `
+    <div class="list-card">
+      <div class="card-title">${escHTML(l.name)}</div>
+      <div class="list-card-items" id="list-${l.key.replace(/_/g, '-')}"></div>
+      <button class="add-btn" onclick="openAddItem('${l.key}')">
+        <span class="add-icon">+</span> Add item
+      </button>
+    </div>
+  `).join('');
+
+  // Fetch all list data
+  const results = await Promise.all(lists.map(l => api(`/api/reminders/${l.key}`)));
   results.forEach((data, i) => {
     if (data) {
-      const containerId = 'list-' + keys[i].replace(/_/g, '-');
-      renderList(data.items, containerId, keys[i]);
+      const containerId = 'list-' + lists[i].key.replace(/_/g, '-');
+      renderList(data.items, containerId, lists[i].key);
     }
   });
 }
@@ -1406,13 +1409,31 @@ async function loadCalendar() {
 }
 
 async function loadHome() {
-  const [daily, weekly, settings] = await Promise.all([
-    api('/api/reminders/daily_chores'),
-    api('/api/reminders/weekly_chores'),
+  const lists = await getListsConfig();
+
+  // Build manage cards dynamically
+  const container = document.getElementById('manage-lists-container');
+  container.innerHTML = lists.map(l => `
+    <div class="card">
+      <div class="card-title">${escHTML(l.name)}</div>
+      <div id="manage-${l.key}"></div>
+      <button class="add-btn" onclick="openAddItem('${l.key}')">
+        <span class="add-icon">+</span> Add item
+      </button>
+    </div>
+  `).join('');
+
+  // Fetch all list data + settings
+  const results = await Promise.all([
+    ...lists.map(l => api(`/api/reminders/${l.key}`)),
     api('/api/settings'),
   ]);
-  if (daily) renderManageList(daily.items, 'manage-daily', 'daily_chores');
-  if (weekly) renderManageList(weekly.items, 'manage-weekly', 'weekly_chores');
+
+  lists.forEach((l, i) => {
+    if (results[i]) renderManageList(results[i].items, 'manage-' + l.key, l.key);
+  });
+
+  const settings = results[results.length - 1];
   if (settings) {
     document.getElementById('setting-location').value = settings.location_name || '';
     document.getElementById('setting-lat').value = settings.latitude || '';
@@ -1422,6 +1443,76 @@ async function loadHome() {
     document.getElementById('google-status').innerHTML =
       `<span class="status-dot ${gc ? 'connected' : 'disconnected'}"></span> ${gc ? 'Connected' : 'Not connected — run setup_google_oauth.py'}`;
   }
+
+  // Discover available Apple Reminders lists
+  discoverLists();
+}
+
+/* ============================================================
+   REMINDERS LIST CONFIGURATION
+   ============================================================ */
+let _discoveredLists = [];
+
+async function discoverLists() {
+  const picker = document.getElementById('reminders-list-picker');
+  picker.innerHTML = '<span class="loading">Discovering lists...</span>';
+  const available = await api('/api/reminders/discover');
+  if (!available) {
+    picker.innerHTML = '<div class="empty-state">Could not discover lists. Check Apple Reminders access.</div>';
+    return;
+  }
+  _discoveredLists = available;
+  const configured = await getListsConfig();
+  const configMap = {};
+  configured.forEach(l => { configMap[l.name] = l; });
+
+  picker.innerHTML = available.map(l => {
+    const enabled = l.enabled;
+    const showOnToday = configMap[l.name] ? configMap[l.name].show_on_today : false;
+    return `
+      <div class="settings-row" style="align-items:center;">
+        <label style="display:flex; align-items:center; gap:8px; flex:1; cursor:pointer;">
+          <input type="checkbox" class="list-toggle" data-name="${escAttr(l.name)}" ${enabled ? 'checked' : ''}>
+          <span style="font-size:1.05rem;">${escHTML(l.name)}</span>
+          <span style="color:var(--text-dim); font-size:0.85rem;">(${l.count} items)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; color:var(--orange);" title="Show on Today tab">
+          <input type="checkbox" class="list-today-toggle" data-name="${escAttr(l.name)}" ${showOnToday ? 'checked' : ''}>
+          &#9733;
+        </label>
+      </div>`;
+  }).join('');
+}
+
+async function saveListConfig() {
+  const toggles = document.querySelectorAll('.list-toggle');
+  const todayToggles = document.querySelectorAll('.list-today-toggle');
+  const todayMap = {};
+  todayToggles.forEach(t => { todayMap[t.dataset.name] = t.checked; });
+
+  const lists = [];
+  toggles.forEach(t => {
+    if (t.checked) {
+      const name = t.dataset.name;
+      const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      lists.push({
+        key: key,
+        name: name,
+        show_on_today: todayMap[name] || false,
+      });
+    }
+  });
+
+  await api('/api/reminders/config', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({lists}),
+  });
+
+  // Clear cached config so next load picks up changes
+  _listsConfig = null;
+  showUndo('List config saved — refreshing...', null);
+  setTimeout(() => location.reload(), 1500);
 }
 
 async function loadMoney() {

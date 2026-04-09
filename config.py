@@ -21,16 +21,16 @@ GOOGLE_SCOPES = [
 ]
 
 # --- Apple Reminders Lists ---
-REMINDERS_LISTS = {
-    "daily_chores": "Daily Chores",
-    "weekly_chores": "Weekly Chores",
-    "things_to_talk_about": "Things to Talk About",
-    "home_projects": "Home Projects",
-    "vacation_planning": "Vacation Planning",
-}
+# Default lists — overridden by "reminders_lists" in data/settings.json.
+# Each entry: { "key": "url_safe_slug", "name": "Exact Apple Reminders Name",
+#                "show_on_today": true/false }
+DEFAULT_REMINDERS_LISTS = [
+    {"key": "weekday_morning", "name": "Weekday morning", "show_on_today": True},
+    {"key": "things_to_talk_about", "name": "Things to Talk About", "show_on_today": True},
+    {"key": "vacation_planning", "name": "Vacation Planning", "show_on_today": False},
+]
 
 # --- Google Sheets (Money tab) ---
-BUDGET_SHEET_ID = ""  # Set via settings or env var
 BUDGET_SHEET_ID = os.environ.get("BUDGET_SHEET_ID", "")
 
 # --- Refresh interval (ms) ---
@@ -62,3 +62,17 @@ def save_settings(settings):
     path = os.path.join(DATA_DIR, "settings.json")
     with open(path, "w") as f:
         json.dump(settings, f, indent=2)
+
+
+def get_reminders_lists():
+    """Get configured reminders lists. Returns list of dicts with key, name, show_on_today."""
+    settings = load_settings()
+    return settings.get("reminders_lists", DEFAULT_REMINDERS_LISTS)
+
+
+def get_reminders_list_name(key):
+    """Look up the Apple Reminders list name for a given URL key."""
+    for lst in get_reminders_lists():
+        if lst["key"] == key:
+            return lst["name"]
+    return key  # fallback: use the key itself

@@ -7,10 +7,12 @@ from datetime import datetime
 from flask import Flask, render_template, jsonify, request
 
 import config
+from config import get_reminders_lists, get_reminders_list_name
 from weather import fetch_weather
 from reminders_bridge import (
     get_items, add_item, complete_item, uncomplete_item,
     delete_item, update_item, reset_daily_chores, reset_weekly_chores,
+    discover_lists,
 )
 from google_calendar import (
     get_today_events, get_week_events, get_upcoming_events,
@@ -60,16 +62,43 @@ def api_weather():
 # Reminders API
 # ============================================================
 
+@app.route("/api/reminders/config")
+def api_reminders_config():
+    """Return the configured reminders lists so the frontend can render dynamically."""
+    return jsonify(get_reminders_lists())
+
+
+@app.route("/api/reminders/discover")
+def api_reminders_discover():
+    """Discover all available Reminders lists from Apple/iCloud."""
+    available = discover_lists()
+    configured = {l["name"] for l in get_reminders_lists()}
+    for item in available:
+        item["enabled"] = item["name"] in configured
+    return jsonify(available)
+
+
+@app.route("/api/reminders/config", methods=["POST"])
+def api_reminders_save_config():
+    """Save which reminders lists to display."""
+    data = request.get_json()
+    lists = data.get("lists", [])
+    settings = config.load_settings()
+    settings["reminders_lists"] = lists
+    config.save_settings(settings)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/reminders/<list_key>")
 def api_get_reminders(list_key):
-    list_name = config.REMINDERS_LISTS.get(list_key, list_key)
+    list_name = get_reminders_list_name(list_key)
     items = get_items(list_name)
     return jsonify({"list": list_name, "items": items})
 
 
 @app.route("/api/reminders/<list_key>/add", methods=["POST"])
 def api_add_reminder(list_key):
-    list_name = config.REMINDERS_LISTS.get(list_key, list_key)
+    list_name = get_reminders_list_name(list_key)
     data = request.get_json()
     title = data.get("title", "").strip()
     if not title:
@@ -80,7 +109,7 @@ def api_add_reminder(list_key):
 
 @app.route("/api/reminders/<list_key>/complete", methods=["POST"])
 def api_complete_reminder(list_key):
-    list_name = config.REMINDERS_LISTS.get(list_key, list_key)
+    list_name = get_reminders_list_name(list_key)
     data = request.get_json()
     item_id = data.get("id")
     complete_item(list_name, item_id)
@@ -89,7 +118,7 @@ def api_complete_reminder(list_key):
 
 @app.route("/api/reminders/<list_key>/uncomplete", methods=["POST"])
 def api_uncomplete_reminder(list_key):
-    list_name = config.REMINDERS_LISTS.get(list_key, list_key)
+    list_name = get_reminders_list_name(list_key)
     data = request.get_json()
     item_id = data.get("id")
     uncomplete_item(list_name, item_id)
@@ -98,7 +127,7 @@ def api_uncomplete_reminder(list_key):
 
 @app.route("/api/reminders/<list_key>/delete", methods=["POST"])
 def api_delete_reminder(list_key):
-    list_name = config.REMINDERS_LISTS.get(list_key, list_key)
+    list_name = get_reminders_list_name(list_key)
     data = request.get_json()
     item_id = data.get("id")
     delete_item(list_name, item_id)
@@ -107,7 +136,7 @@ def api_delete_reminder(list_key):
 
 @app.route("/api/reminders/<list_key>/update", methods=["POST"])
 def api_update_reminder(list_key):
-    list_name = config.REMINDERS_LISTS.get(list_key, list_key)
+    list_name = get_reminders_list_name(list_key)
     data = request.get_json()
     item_id = data.get("id")
     new_title = data.get("title", "").strip()
@@ -186,7 +215,7 @@ def api_get_settings():
 def api_save_settings():
     data = request.get_json()
     settings = config.load_settings()
-    for key in ["latitude", "longitude", "location_name", "budget_sheet_id"]:
+    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists"]:
         if key in data:
             settings[key] = data[key]
     config.save_settings(settings)
