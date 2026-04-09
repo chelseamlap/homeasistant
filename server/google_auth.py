@@ -1,5 +1,5 @@
 """
-Google OAuth2 authentication for Calendar and Sheets.
+Google OAuth2 authentication for Calendar, Sheets, and Tasks.
 
 This is a standalone OAuth flow for the family's personal Google account.
 It does NOT rely on any pre-existing Google session on the device.
@@ -7,7 +7,7 @@ It does NOT rely on any pre-existing Google session on the device.
 SETUP:
 1. Go to https://console.cloud.google.com/
 2. Create a new project (e.g. "Family Dashboard")
-3. Enable: Google Calendar API, Google Sheets API
+3. Enable: Google Calendar API, Google Sheets API, Google Tasks API
 4. Create OAuth2 credentials (Desktop application type)
 5. Download the JSON and save as client_secret.json in the project root
 6. Run: python setup_google_oauth.py  (one-time, opens a browser for consent)
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "https://www.googleapis.com/auth/tasks",
 ]
 
 # Project root is one level up from server/

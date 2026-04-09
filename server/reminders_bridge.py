@@ -1,15 +1,15 @@
 """
-Apple Reminders bridge with three backends:
+Reminders bridge with multiple backends:
 
 1. macOS native (JXA) — used on Mac, reads/writes the Reminders app directly.
-2. CalDAV (iCloud) — used on Raspberry Pi or any non-Mac. Connects to
-   iCloud's CalDAV server with an app-specific password. Full read/write.
-3. Local JSON — fallback when neither of the above is available.
+2. Google Tasks — used on Raspberry Pi or any non-Mac. Uses the Google Tasks
+   API (same OAuth as Calendar/Sheets). Full read/write for all lists.
+3. CalDAV (iCloud) — legacy fallback for non-Mac if Google Tasks unavailable.
+4. Local JSON — fallback when none of the above is available.
 
-Setup for CalDAV (Raspberry Pi):
-  Create data/icloud_creds.json with:
-  {"apple_id": "you@icloud.com", "password": "xxxx-xxxx-xxxx-xxxx"}
-  The password must be an app-specific password from https://appleid.apple.com
+For Google Tasks (Raspberry Pi):
+  Enable the Google Tasks API in your Cloud project and re-run
+  setup_google_oauth.py to authorize the Tasks scope.
 """
 import os
 import json
@@ -21,12 +21,22 @@ from datetime import datetime, date, timedelta
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+# Project root is one level up from server/
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 _IS_MACOS = platform.system() == "Darwin"
 
-# CalDAV support for non-macOS (Raspberry Pi)
+# Google Tasks support for non-macOS (Raspberry Pi)
+_GOOGLE_TASKS_AVAILABLE = False
+try:
+    from server import google_tasks
+    _GOOGLE_TASKS_AVAILABLE = True
+except ImportError:
+    if not _IS_MACOS:
+        logger.warning("google_tasks not available — check Google OAuth setup")
+
+# CalDAV support (legacy fallback for non-macOS)
 _CALDAV_AVAILABLE = False
 _caldav_principal = None
 
@@ -35,7 +45,7 @@ try:
     _CALDAV_AVAILABLE = True
 except ImportError:
     if not _IS_MACOS:
-        logger.warning("caldav not installed — pip install caldav for iCloud Reminders sync")
+        logger.info("caldav not installed — using Google Tasks or local fallback")
 
 
 # ---- Local JSON storage (fallback + reset tracking) ----
@@ -520,17 +530,22 @@ def _caldav_discover_lists():
 
 
 # Determine which remote backend to use
-_USE_CALDAV = not _IS_MACOS and _CALDAV_AVAILABLE
+_USE_GOOGLE_TASKS = not _IS_MACOS and _GOOGLE_TASKS_AVAILABLE
+_USE_CALDAV = not _IS_MACOS and _CALDAV_AVAILABLE and not _USE_GOOGLE_TASKS
 
 
-# ---- Public API (dispatches to macOS native, CalDAV, or local JSON) ----
+# ---- Public API (dispatches to macOS native, Google Tasks, CalDAV, or local JSON) ----
 
 def discover_lists():
-    """Discover all available Reminders lists from the system.
+    """Discover all available Reminders/Tasks lists from the system.
     Returns list of dicts: [{name, id, account, color, count}, ...]
     """
     if _IS_MACOS:
         result = _macos_discover_lists()
+        if result is not None:
+            return result
+    if _USE_GOOGLE_TASKS:
+        result = google_tasks.discover_lists()
         if result is not None:
             return result
     if _USE_CALDAV:
@@ -542,6 +557,8 @@ def discover_lists():
 def _remote_get_items(list_name):
     if _IS_MACOS:
         return _macos_get_items(list_name)
+    if _USE_GOOGLE_TASKS:
+        return google_tasks.get_items(list_name)
     if _USE_CALDAV:
         return _caldav_get_items(list_name)
     return None
@@ -550,6 +567,8 @@ def _remote_get_items(list_name):
 def _remote_add_item(list_name, title):
     if _IS_MACOS:
         return _macos_add_item(list_name, title)
+    if _USE_GOOGLE_TASKS:
+        return google_tasks.add_item(list_name, title)
     if _USE_CALDAV:
         return _caldav_add_item(list_name, title)
     return None
@@ -559,6 +578,8 @@ def _remote_complete(list_name, item_id, completed):
     if _IS_MACOS:
         fn = _macos_complete_item if completed else _macos_uncomplete_item
         return fn(list_name, item_id)
+    if _USE_GOOGLE_TASKS:
+        return google_tasks.set_completed(list_name, item_id, completed)
     if _USE_CALDAV:
         return _caldav_set_completed(list_name, item_id, completed)
     return None
@@ -567,6 +588,8 @@ def _remote_complete(list_name, item_id, completed):
 def _remote_delete(list_name, item_id):
     if _IS_MACOS:
         return _macos_delete_item(list_name, item_id)
+    if _USE_GOOGLE_TASKS:
+        return google_tasks.delete_item(list_name, item_id)
     if _USE_CALDAV:
         return _caldav_delete_item(list_name, item_id)
     return None
@@ -575,6 +598,8 @@ def _remote_delete(list_name, item_id):
 def _remote_update(list_name, item_id, new_title):
     if _IS_MACOS:
         return _macos_update_item(list_name, item_id, new_title)
+    if _USE_GOOGLE_TASKS:
+        return google_tasks.update_item(list_name, item_id, new_title)
     if _USE_CALDAV:
         return _caldav_update_item(list_name, item_id, new_title)
     return None
@@ -583,6 +608,8 @@ def _remote_update(list_name, item_id, new_title):
 def _remote_reset(list_name):
     if _IS_MACOS:
         return _macos_reset_list(list_name)
+    if _USE_GOOGLE_TASKS:
+        return google_tasks.reset_list(list_name)
     if _USE_CALDAV:
         return _caldav_reset_list(list_name)
     return None
