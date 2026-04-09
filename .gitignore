@@ -1,0 +1,15 @@
+# Secrets & credentials
+client_secret*.json
+data/google_token.json
+*.credentials.json
+
+# Data files (generated at runtime)
+data/*.json
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# OS
+.DS_Store

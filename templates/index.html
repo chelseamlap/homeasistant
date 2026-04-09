@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Family Dashboard</title>
+<title>The Home Launchpad</title>
 <style>
 /* ============================================================
    BASE / RESET / DARK THEME
@@ -178,22 +178,29 @@ h2.section-title:first-child { margin-top: 0; }
 .hourly-item .h-temp { font-size: 16px; font-weight: 600; color: var(--text); }
 .hourly-item .h-icon { font-size: 18px; }
 
-/* 7-day forecast */
-.daily-row {
+/* 7-day forecast (horizontal strip like hourly) */
+.daily-strip {
   display: flex;
-  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 14px;
-  gap: 8px;
 }
-.daily-row:last-child { border-bottom: none; }
-.daily-day { width: 70px; font-weight: 600; color: var(--text); }
-.daily-icon { font-size: 20px; width: 30px; text-align: center; }
-.daily-temps { flex: 1; }
-.daily-hi { color: var(--text-bright); font-weight: 600; }
-.daily-lo { color: var(--text-dim); }
-.daily-rain { color: var(--accent); width: 50px; text-align: right; }
+.daily-strip-item {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 8px 10px;
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  min-width: 80px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.daily-strip-item .d-day { font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.daily-strip-item .d-icon { font-size: 20px; margin: 4px 0; }
+.daily-strip-item .d-temps { font-size: 14px; }
+.daily-strip-item .d-hi { font-weight: 600; color: var(--text-bright); }
+.daily-strip-item .d-lo { color: var(--text-dim); }
+.daily-strip-item .d-rain { color: var(--accent); font-size: 11px; }
 
 /* ============================================================
    EVENT LISTS
@@ -439,6 +446,39 @@ h2.section-title:first-child { margin-top: 0; }
 .week-event.has-guests { border-left-color: var(--visitor); }
 .week-event-time { font-size: 10px; color: var(--accent); }
 
+/* Calendar combined view */
+.cal-combined { display: flex; flex-direction: column; gap: 16px; }
+.cal-combined .week-grid { min-height: auto; }
+.cal-combined .week-col { min-height: 180px; }
+.cal-combined .month-day { min-height: 60px; }
+
+/* Lists grid */
+.lists-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.list-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+}
+.list-card .card-title { margin-bottom: 10px; }
+.list-card-items {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.list-card .add-btn {
+  margin-top: auto;
+  min-height: 40px;
+  font-size: 14px;
+}
+
 /* Visitors card */
 .visitor-card {
   display: flex;
@@ -593,22 +633,55 @@ h2.section-title:first-child { margin-top: 0; }
 .status-dot.disconnected { background: var(--red); }
 
 /* ============================================================
-   MUSIC SECTION
+   MUSIC / GOOGLE HOME SECTION
    ============================================================ */
-.music-link {
+.music-now-playing {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px;
+  gap: 14px;
+  padding: 14px;
   background: var(--bg-card-alt);
-  border-radius: var(--radius);
-  color: var(--accent);
-  font-size: 16px;
-  text-decoration: none;
-  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
 }
-.music-link:active { background: rgba(79,195,247,0.1); }
+.music-icon { font-size: 32px; }
+.music-info { flex: 1; }
+.music-track { font-size: 15px; color: var(--text-bright); font-weight: 600; }
+.music-artist { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+.music-device { font-size: 11px; color: var(--accent); margin-top: 4px; }
+.music-placeholder {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-dim);
+  font-size: 14px;
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   ECOBEE / THERMOSTAT
+   ============================================================ */
+.thermostat-display {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  background: var(--bg-card-alt);
+  border-radius: 8px;
+}
+.thermostat-temp { font-size: 36px; font-weight: 700; color: var(--text-bright); }
+.thermostat-details { flex: 1; font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+.thermostat-mode { color: var(--green); font-weight: 600; }
+.thermostat-placeholder {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-dim);
+  font-size: 14px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  line-height: 1.5;
+}
 
 /* ============================================================
    UNDO TOAST
@@ -781,16 +854,11 @@ h2.section-title:first-child { margin-top: 0; }
       <div class="two-col">
         <!-- LEFT: TODAY -->
         <div class="col" id="today-left">
-          <!-- Weather Current -->
+          <!-- Weather: Current + Hourly combined -->
           <div class="card" id="weather-current-card">
             <div class="card-title">Weather Now</div>
             <div id="weather-current" class="loading">Loading weather...</div>
-          </div>
-
-          <!-- Hourly Forecast -->
-          <div class="card">
-            <div class="card-title">Next 8 Hours</div>
-            <div id="hourly-forecast" class="hourly-strip loading">Loading...</div>
+            <div id="hourly-forecast" class="hourly-strip" style="margin-top:10px;"></div>
           </div>
 
           <!-- Today's Events -->
@@ -805,21 +873,35 @@ h2.section-title:first-child { margin-top: 0; }
             <div id="today-chores"></div>
           </div>
 
-          <!-- Music -->
+          <!-- Music / Google Home -->
           <div class="card">
-            <div class="card-title">Music</div>
-            <a class="music-link" href="https://music.youtube.com" target="_blank" rel="noopener">
-              &#127925; Open YouTube Music
-            </a>
+            <div class="card-title">&#127925; Now Playing &mdash; Google Home</div>
+            <div id="music-now-playing">
+              <div class="music-placeholder">
+                Google Home integration coming soon.<br>
+                Will show what's currently playing on your speakers.
+              </div>
+            </div>
+          </div>
+
+          <!-- Ecobee / Thermostat -->
+          <div class="card">
+            <div class="card-title">&#127777; Thermostat &mdash; Ecobee</div>
+            <div id="ecobee-status">
+              <div class="thermostat-placeholder">
+                Ecobee integration coming soon.<br>
+                Will show current temp, set point, and mode.
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- RIGHT: THIS WEEK -->
         <div class="col" id="today-right">
-          <!-- 7-Day Forecast -->
+          <!-- 7-Day Forecast (horizontal strip) -->
           <div class="card">
             <div class="card-title">7-Day Forecast</div>
-            <div id="daily-forecast"></div>
+            <div id="daily-forecast" class="daily-strip"></div>
           </div>
 
           <!-- This Week's Events -->
@@ -853,54 +935,65 @@ h2.section-title:first-child { margin-top: 0; }
          TAB 2: LISTS
          ============================================================ -->
     <div class="tab-panel" id="panel-lists">
-      <h2 class="section-title">Daily Chores</h2>
-      <div id="list-daily-chores"></div>
-      <button class="add-btn" onclick="openAddItem('daily_chores')">
-        <span class="add-icon">+</span> Add chore
-      </button>
+      <div class="lists-grid">
+        <div class="list-card">
+          <div class="card-title">Daily Chores</div>
+          <div class="list-card-items" id="list-daily-chores"></div>
+          <button class="add-btn" onclick="openAddItem('daily_chores')">
+            <span class="add-icon">+</span> Add chore
+          </button>
+        </div>
 
-      <h2 class="section-title">Weekly Chores</h2>
-      <div id="list-weekly-chores"></div>
-      <button class="add-btn" onclick="openAddItem('weekly_chores')">
-        <span class="add-icon">+</span> Add chore
-      </button>
+        <div class="list-card">
+          <div class="card-title">Weekly Chores</div>
+          <div class="list-card-items" id="list-weekly-chores"></div>
+          <button class="add-btn" onclick="openAddItem('weekly_chores')">
+            <span class="add-icon">+</span> Add chore
+          </button>
+        </div>
 
-      <h2 class="section-title">Things to Talk About</h2>
-      <div id="list-things-to-talk-about"></div>
-      <button class="add-btn" onclick="openAddItem('things_to_talk_about')">
-        <span class="add-icon">+</span> Add topic
-      </button>
+        <div class="list-card">
+          <div class="card-title">Things to Talk About</div>
+          <div class="list-card-items" id="list-things-to-talk-about"></div>
+          <button class="add-btn" onclick="openAddItem('things_to_talk_about')">
+            <span class="add-icon">+</span> Add topic
+          </button>
+        </div>
 
-      <h2 class="section-title">Home Projects</h2>
-      <div id="list-home-projects"></div>
-      <button class="add-btn" onclick="openAddItem('home_projects')">
-        <span class="add-icon">+</span> Add project
-      </button>
+        <div class="list-card">
+          <div class="card-title">Home Projects</div>
+          <div class="list-card-items" id="list-home-projects"></div>
+          <button class="add-btn" onclick="openAddItem('home_projects')">
+            <span class="add-icon">+</span> Add project
+          </button>
+        </div>
 
-      <h2 class="section-title">Vacation Planning</h2>
-      <div id="list-vacation-planning"></div>
-      <button class="add-btn" onclick="openAddItem('vacation_planning')">
-        <span class="add-icon">+</span> Add item
-      </button>
+        <div class="list-card">
+          <div class="card-title">Vacation Planning</div>
+          <div class="list-card-items" id="list-vacation-planning"></div>
+          <button class="add-btn" onclick="openAddItem('vacation_planning')">
+            <span class="add-icon">+</span> Add item
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ============================================================
          TAB 3: CALENDAR
          ============================================================ -->
     <div class="tab-panel" id="panel-calendar">
-      <div class="cal-view-toggle">
-        <button class="cal-toggle-btn active" data-view="agenda" onclick="setCalView('agenda')">Agenda</button>
-        <button class="cal-toggle-btn" data-view="week" onclick="setCalView('week')">Week</button>
-        <button class="cal-toggle-btn" data-view="month" onclick="setCalView('month')">Month</button>
-      </div>
-
-      <div id="cal-agenda" class="loading">Loading calendar...</div>
-      <div id="cal-week" style="display:none;"></div>
-      <div id="cal-month" style="display:none;"></div>
-
-      <div class="card" style="margin-top:16px;">
-        <div class="card-title">Upcoming Visitors</div>
-        <div id="upcoming-visitors"></div>
+      <div class="cal-combined">
+        <div class="card">
+          <div class="card-title">This Week</div>
+          <div id="cal-week"></div>
+        </div>
+        <div class="card">
+          <div id="cal-month"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Upcoming Visitors</div>
+          <div id="upcoming-visitors"></div>
+        </div>
       </div>
     </div>
 
@@ -1116,13 +1209,13 @@ function renderWeatherCurrent(w) {
     </div>
   `).join('');
 
-  // Daily
+  // Daily (horizontal strip)
   document.getElementById('daily-forecast').innerHTML = w.daily.map(d => `
-    <div class="daily-row">
-      <span class="daily-day">${d.day_short}</span>
-      <span class="daily-icon">${d.icon}</span>
-      <span class="daily-temps"><span class="daily-hi">${d.high}°</span> / <span class="daily-lo">${d.low}°</span></span>
-      <span class="daily-rain">${d.rain_pct}%</span>
+    <div class="daily-strip-item">
+      <div class="d-day">${d.day_short}</div>
+      <div class="d-icon">${d.icon}</div>
+      <div class="d-temps"><span class="d-hi">${d.high}°</span> / <span class="d-lo">${d.low}°</span></div>
+      <div class="d-rain">${d.rain_pct}%</div>
     </div>
   `).join('');
 }
@@ -1339,16 +1432,12 @@ async function loadAllLists() {
 }
 
 async function loadCalendar() {
-  if (calView === 'agenda') {
-    const events = await api('/api/calendar/upcoming?days=30');
-    renderEvents(events, 'cal-agenda', true);
-  } else if (calView === 'week') {
-    const events = await api('/api/calendar/week');
-    renderWeekView(events);
-  } else if (calView === 'month') {
-    await renderMonthView();
-  }
-  const visitors = await api('/api/calendar/visitors');
+  const [weekEvents, visitors] = await Promise.all([
+    api('/api/calendar/week'),
+    api('/api/calendar/visitors'),
+  ]);
+  renderWeekView(weekEvents);
+  await renderMonthView();
   renderVisitors(visitors);
 }
 
@@ -1406,15 +1495,6 @@ async function loadMoney() {
 /* ============================================================
    CALENDAR VIEWS
    ============================================================ */
-function setCalView(view) {
-  calView = view;
-  document.querySelectorAll('.cal-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  document.getElementById('cal-agenda').style.display = view === 'agenda' ? 'block' : 'none';
-  document.getElementById('cal-week').style.display = view === 'week' ? 'block' : 'none';
-  document.getElementById('cal-month').style.display = view === 'month' ? 'block' : 'none';
-  loadCalendar();
-}
-
 function renderWeekView(events) {
   const el = document.getElementById('cal-week');
   const now = new Date();
