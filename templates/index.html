@@ -1,16 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>The Home Launchpad</title>
+<script>
+// Apply saved theme immediately to prevent flash
+(function(){var t=localStorage.getItem('dashboard-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
+</script>
 <style>
 /* ============================================================
-   BASE / RESET / DARK THEME
+   BASE / RESET / THEMES
    ============================================================ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
+/* --- Theme: Dark (Steam-inspired) --- */
+:root, [data-theme="dark"] {
   --bg: #0f1923;
   --bg-card: #1b2838;
   --bg-card-alt: #243447;
@@ -28,6 +33,84 @@
   --radius: 12px;
   --row-min: 60px;
   --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --card-opacity: 1;
+  --kb-bg: #2a2a3e;
+  --kb-key-bg: #3a3a4e;
+  --kb-key-active: #4a4a5e;
+  --toast-bg: #333;
+  --toast-text: #fff;
+}
+
+/* --- Theme: Light (Home Assistant-inspired) --- */
+[data-theme="light"] {
+  --bg: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-card-alt: #f5f7fa;
+  --bg-input: #ffffff;
+  --text: #1d1d1f;
+  --text-dim: #6e7681;
+  --text-bright: #000000;
+  --accent: #03a9f4;
+  --accent-dim: #0288d1;
+  --green: #4caf50;
+  --orange: #ff9800;
+  --red: #f44336;
+  --visitor: #9c27b0;
+  --border: #e0e4e8;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --card-opacity: 1;
+  --kb-bg: #e8eaed;
+  --kb-key-bg: #ffffff;
+  --kb-key-active: #d0d4d8;
+  --toast-bg: #323232;
+  --toast-text: #fff;
+}
+
+/* --- Theme: Warm (soft warm tones) --- */
+[data-theme="warm"] {
+  --bg: #faf6f1;
+  --bg-card: #ffffff;
+  --bg-card-alt: #fdf8f3;
+  --bg-input: #ffffff;
+  --text: #3e2723;
+  --text-dim: #8d6e63;
+  --text-bright: #1b0e0a;
+  --accent: #ff7043;
+  --accent-dim: #e64a19;
+  --green: #66bb6a;
+  --orange: #ffa726;
+  --red: #ef5350;
+  --visitor: #ab47bc;
+  --border: #e8ddd4;
+  --card-opacity: 1;
+  --kb-bg: #efe8e0;
+  --kb-key-bg: #ffffff;
+  --kb-key-active: #e0d6cc;
+  --toast-bg: #4e342e;
+  --toast-text: #fff;
+}
+
+/* Background image support */
+body.has-bg-image {
+  --card-opacity: 0.92;
+}
+body.has-bg-image::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: var(--bg-image);
+}
+body.has-bg-image::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg);
+  opacity: 0.7;
 }
 
 html, body {
@@ -54,6 +137,7 @@ html, body {
   display: flex;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--card-shadow, none);
   flex-shrink: 0;
   height: 60px;
 }
@@ -108,6 +192,8 @@ html, body {
   padding: 16px 18px;
   margin-bottom: 14px;
   border: 1px solid var(--border);
+  box-shadow: var(--card-shadow, none);
+  opacity: var(--card-opacity, 1);
 }
 .card-title {
   font-size: 15px;
@@ -472,6 +558,7 @@ h2.section-title:first-child { margin-top: 0; }
   display: flex;
   flex-direction: column;
   max-height: 400px;
+  opacity: var(--card-opacity, 1);
 }
 .list-card .card-title { margin-bottom: 10px; }
 .list-card-items {
@@ -676,8 +763,8 @@ h2.section-title:first-child { margin-top: 0; }
   align-items: center;
 }
 .toast {
-  background: #333;
-  color: #fff;
+  background: var(--toast-bg);
+  color: var(--toast-text);
   padding: 12px 20px;
   border-radius: 10px;
   font-size: 15px;
@@ -720,7 +807,7 @@ h2.section-title:first-child { margin-top: 0; }
   left: 0;
   right: 0;
   height: 35vh;
-  background: #2a2a3e;
+  background: var(--kb-bg);
   border-top: 2px solid var(--border);
   z-index: 950;
   display: none;
@@ -753,7 +840,7 @@ h2.section-title:first-child { margin-top: 0; }
 .kb-key {
   flex: 1;
   max-width: 72px;
-  background: #3a3a4e;
+  background: var(--kb-key-bg);
   border: none;
   border-radius: 6px;
   color: var(--text);
@@ -765,11 +852,11 @@ h2.section-title:first-child { margin-top: 0; }
   justify-content: center;
   min-height: 48px;
 }
-.kb-key:active { background: #4a4a5e; }
+.kb-key:active { background: var(--kb-key-active); }
 .kb-key.wide { max-width: none; flex: 2; }
 .kb-key.accent { background: var(--accent); color: #000; font-weight: 700; }
 .kb-key.accent:active { background: #3aa8d8; }
-.kb-key.dark { background: #555; color: #fff; }
+.kb-key.dark { background: var(--text-dim); color: var(--bg); }
 
 /* ============================================================
    SEE-ALL LINK
@@ -942,6 +1029,29 @@ h2.section-title:first-child { margin-top: 0; }
         <div style="display:flex; gap:10px; margin-top:12px;">
           <button class="btn btn-primary" onclick="saveListConfig()">Save List Selection</button>
           <button class="btn btn-outline" onclick="discoverLists()">Refresh Lists</button>
+        </div>
+      </div>
+
+      <h2 class="section-title">Appearance</h2>
+      <div class="card">
+        <div class="settings-row">
+          <span class="settings-label">Theme</span>
+          <select class="settings-input" id="setting-theme" onchange="applyTheme(this.value)">
+            <option value="dark">Dark</option>
+            <option value="light">Light (Home Assistant)</option>
+            <option value="warm">Warm</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Background Image</span>
+          <input class="settings-input" id="setting-bg-file" type="file" accept="image/*" onchange="uploadBackground(this)" style="padding:8px 12px;">
+        </div>
+        <div id="bg-preview-row" class="settings-row" style="display:none;">
+          <span class="settings-label">Current Background</span>
+          <div style="display:flex; align-items:center; gap:10px; flex:1;">
+            <img id="bg-preview-thumb" style="height:48px; border-radius:6px; object-fit:cover;" alt="">
+            <button class="btn btn-outline" onclick="removeBackground()" style="padding:8px 14px; font-size:13px;">Remove</button>
+          </div>
         </div>
       </div>
 
@@ -1439,6 +1549,8 @@ async function loadHome() {
     document.getElementById('setting-lat').value = settings.latitude || '';
     document.getElementById('setting-lon').value = settings.longitude || '';
     document.getElementById('setting-sheet').value = settings.budget_sheet_id || '';
+    document.getElementById('setting-theme').value = localStorage.getItem('dashboard-theme') || settings.theme || 'light';
+    if (settings.background_url) applyBackground(settings.background_url);
     const gc = settings.google_connected;
     document.getElementById('google-status').innerHTML =
       `<span class="status-dot ${gc ? 'connected' : 'disconnected'}"></span> ${gc ? 'Connected' : 'Not connected — run setup_google_oauth.py'}`;
@@ -1650,9 +1762,60 @@ function renderVisitors(visitors) {
 }
 
 /* ============================================================
+   THEME & BACKGROUND
+   ============================================================ */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('dashboard-theme', theme);
+}
+
+function applyBackground(url) {
+  if (url) {
+    document.body.style.setProperty('--bg-image', `url('${url}')`);
+    document.body.classList.add('has-bg-image');
+    document.getElementById('bg-preview-row').style.display = '';
+    document.getElementById('bg-preview-thumb').src = url;
+  } else {
+    document.body.style.removeProperty('--bg-image');
+    document.body.classList.remove('has-bg-image');
+    document.getElementById('bg-preview-row').style.display = 'none';
+    document.getElementById('bg-preview-thumb').src = '';
+  }
+}
+
+async function uploadBackground(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('image', file);
+  const r = await fetch('/api/settings/background', {method: 'POST', body: form});
+  const data = await r.json();
+  if (data.url) {
+    applyBackground(data.url);
+    showToast('Background image set');
+  }
+}
+
+async function removeBackground() {
+  await api('/api/settings/background/remove', {method: 'POST'});
+  applyBackground(null);
+  showToast('Background removed');
+}
+
+function loadThemeAndBackground() {
+  // Theme: prefer localStorage (instant), fall back to server setting
+  const theme = localStorage.getItem('dashboard-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  const themeSelect = document.getElementById('setting-theme');
+  if (themeSelect) themeSelect.value = theme;
+}
+
+/* ============================================================
    SETTINGS
    ============================================================ */
 async function saveSettings() {
+  const theme = document.getElementById('setting-theme').value;
+  applyTheme(theme);
   await api('/api/settings', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -1660,6 +1823,7 @@ async function saveSettings() {
       latitude: parseFloat(document.getElementById('setting-lat').value) || 0,
       longitude: parseFloat(document.getElementById('setting-lon').value) || 0,
       budget_sheet_id: document.getElementById('setting-sheet').value,
+      theme: theme,
     })
   });
   showToast('Settings saved');
@@ -1812,8 +1976,8 @@ function updateKbKeys() {
     });
   }
 
-  document.getElementById('kb-shift').style.background = kbShifted ? 'var(--accent)' : '#555';
-  document.getElementById('kb-shift').style.color = kbShifted ? '#000' : '#fff';
+  document.getElementById('kb-shift').style.background = kbShifted ? 'var(--accent)' : '';
+  document.getElementById('kb-shift').style.color = kbShifted ? '#000' : '';
   document.getElementById('kb-num-toggle').textContent = kbNumMode ? 'ABC' : '123';
 }
 
@@ -1826,6 +1990,21 @@ function escAttr(s) { return (s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'
 /* ============================================================
    INIT & AUTO-REFRESH
    ============================================================ */
+loadThemeAndBackground();
+// Fetch server settings for theme + background on load
+(async function initAppearance() {
+  const settings = await api('/api/settings');
+  if (settings) {
+    // Server theme wins if no local override yet
+    if (!localStorage.getItem('dashboard-theme') && settings.theme) {
+      applyTheme(settings.theme);
+    }
+    const themeSelect = document.getElementById('setting-theme');
+    if (themeSelect) themeSelect.value = localStorage.getItem('dashboard-theme') || settings.theme || 'light';
+    if (settings.background_url) applyBackground(settings.background_url);
+  }
+})();
+
 loadToday();
 setInterval(() => {
   if (currentTab === 'today') loadToday();

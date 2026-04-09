@@ -71,12 +71,9 @@ fi
 echo ""
 echo "─── Apple Reminders ───"
 echo ""
-echo "The dashboard uses local JSON files by default (works great)."
-echo "Manage lists directly from the touchscreen."
-echo ""
-echo "For iCloud sync (optional), run separately:"
-echo "  python3 -c \"from pyicloud import PyiCloudService; ...\""
-echo "See README.md for full instructions."
+echo "The dashboard uses local JSON files by default."
+echo "For iCloud sync, create data/icloud_creds.json with your Apple ID"
+echo "and an app-specific password. See README.md for details."
 
 # --- Seed sample chores ---
 if [ ! -f "data/reminders_daily_chores.json" ]; then
@@ -130,14 +127,48 @@ fi
 echo ""
 read -p "Auto-launch Chrome on boot? (y/n): " AUTO_CHROME
 if [[ "$AUTO_CHROME" == "y" ]]; then
-    AUTOSTART_DIR="$HOME/.config/lxsession/LXDE-pi"
-    mkdir -p "$AUTOSTART_DIR"
-    # Append if not already there
-    if ! grep -q "family-dashboard" "$AUTOSTART_DIR/autostart" 2>/dev/null; then
-        echo "@chromium-browser --start-maximized --app=http://localhost:5000" >> "$AUTOSTART_DIR/autostart"
-        echo "✓ Chrome will auto-launch on boot"
-    else
-        echo "✓ Chrome autostart already configured"
+    CHROME_CMD="chromium-browser --start-maximized --noerrdialogs --disable-infobars --app=http://localhost:5000"
+    INSTALLED=false
+
+    # Method 1: XDG autostart (works on most desktop environments)
+    XDG_DIR="$HOME/.config/autostart"
+    mkdir -p "$XDG_DIR"
+    cat > "$XDG_DIR/family-dashboard.desktop" << EOF
+[Desktop Entry]
+Type=Application
+Name=Family Dashboard
+Comment=Launch Family Dashboard in Chrome kiosk mode
+Exec=bash -c 'sleep 5 && $CHROME_CMD'
+X-GNOME-Autostart-enabled=true
+EOF
+    echo "✓ XDG autostart entry created ($XDG_DIR/family-dashboard.desktop)"
+    INSTALLED=true
+
+    # Method 2: LXDE (older Raspberry Pi OS)
+    LXDE_DIR="$HOME/.config/lxsession/LXDE-pi"
+    if [ -d "$LXDE_DIR" ]; then
+        if ! grep -q "family-dashboard" "$LXDE_DIR/autostart" 2>/dev/null; then
+            echo "@bash -c 'sleep 5 && $CHROME_CMD'" >> "$LXDE_DIR/autostart"
+            echo "✓ LXDE autostart entry added"
+        fi
+    fi
+
+    # Method 3: Wayfire (Raspberry Pi OS Bookworm+)
+    WAYFIRE_INI="$HOME/.config/wayfire.ini"
+    if [ -f "$WAYFIRE_INI" ]; then
+        if ! grep -q "family-dashboard" "$WAYFIRE_INI" 2>/dev/null; then
+            # Add to [autostart] section
+            if grep -q "\[autostart\]" "$WAYFIRE_INI"; then
+                sed -i "/\[autostart\]/a family-dashboard = bash -c 'sleep 5 && $CHROME_CMD'" "$WAYFIRE_INI"
+            else
+                echo -e "\n[autostart]\nfamily-dashboard = bash -c 'sleep 5 && $CHROME_CMD'" >> "$WAYFIRE_INI"
+            fi
+            echo "✓ Wayfire autostart entry added"
+        fi
+    fi
+
+    if [ "$INSTALLED" = true ]; then
+        echo "→ Chrome will auto-launch 5 seconds after desktop loads"
     fi
 fi
 

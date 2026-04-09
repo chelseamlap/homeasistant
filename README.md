@@ -197,6 +197,44 @@ All data refreshes automatically every 5 minutes. Use the "Refresh All Data" but
 ### In-App Keyboard
 A built-in on-screen keyboard appears when adding or editing items. It covers the bottom 35% of the screen with large touch-friendly keys. If it doesn't work well for your setup, you can fall back to the Raspberry Pi's system keyboard (e.g., Onboard or Squeekboard).
 
+### Themes & Background Image
+
+The dashboard ships with three themes, selectable from **Home > Appearance**:
+
+| Theme | Description |
+|---|---|
+| **Light** (default) | Clean light theme inspired by Home Assistant |
+| **Dark** | Dark blue-gray theme |
+| **Warm** | Soft warm tones |
+
+Theme choice is saved per-browser (instant) and also synced to `settings.json` so all devices use the same default.
+
+You can also set a **background image** (e.g., a family photo) from the Appearance section. The image is overlaid with a semi-transparent tint matching your theme so text stays readable. Adding new themes is straightforward — just add a new `[data-theme="name"]` CSS block in `index.html`.
+
+#### Sending a background image to the Pi via SSH
+
+From your laptop/desktop, use `scp` to copy the image directly to the Pi's data folder:
+
+```bash
+scp ~/Pictures/family-photo.jpg pi@raspberrypi.local:/home/pi/family-dashboard/data/background.jpg
+```
+
+Then update `data/settings.json` on the Pi to point to it:
+
+```bash
+ssh pi@raspberrypi.local
+cd /home/pi/family-dashboard
+python3 -c "
+import json
+s = json.load(open('data/settings.json'))
+s['background_url'] = '/data/background.jpg'
+json.dump(s, open('data/settings.json', 'w'), indent=2)
+print('Done — refresh the dashboard browser to see the new background')
+"
+```
+
+Replace `raspberrypi.local` with your Pi's hostname or IP address, and adjust the image filename/extension as needed (`.jpg`, `.png`, `.webp` are all supported). The dashboard will pick up the new background on the next page refresh.
+
 ---
 
 ## Updating the Dashboard

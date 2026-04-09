@@ -2,9 +2,10 @@
 """Family Home Dashboard — Flask server."""
 import os
 import json
+import glob as globmod
 import logging
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directory
 
 import config
 from config import get_reminders_lists, get_reminders_list_name
@@ -215,11 +216,57 @@ def api_get_settings():
 def api_save_settings():
     data = request.get_json()
     settings = config.load_settings()
-    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists"]:
+    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme"]:
         if key in data:
             settings[key] = data[key]
     config.save_settings(settings)
     return jsonify({"ok": True})
+
+
+@app.route("/api/settings/background", methods=["POST"])
+def api_upload_background():
+    """Upload a background image."""
+    if "image" not in request.files:
+        return jsonify({"error": "No image provided"}), 400
+    f = request.files["image"]
+    if not f.filename:
+        return jsonify({"error": "No file selected"}), 400
+    # Remove old backgrounds
+    for old in globmod.glob(os.path.join(config.DATA_DIR, "background.*")):
+        os.remove(old)
+    ext = os.path.splitext(f.filename)[1].lower() or ".jpg"
+    allowed = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+    if ext not in allowed:
+        return jsonify({"error": "Unsupported image format"}), 400
+    filename = "background" + ext
+    f.save(os.path.join(config.DATA_DIR, filename))
+    url = f"/data/{filename}"
+    settings = config.load_settings()
+    settings["background_url"] = url
+    config.save_settings(settings)
+    return jsonify({"ok": True, "url": url})
+
+
+@app.route("/api/settings/background/remove", methods=["POST"])
+def api_remove_background():
+    """Remove the background image."""
+    for old in globmod.glob(os.path.join(config.DATA_DIR, "background.*")):
+        os.remove(old)
+    settings = config.load_settings()
+    settings.pop("background_url", None)
+    config.save_settings(settings)
+    return jsonify({"ok": True})
+
+
+@app.route("/data/<path:filename>")
+def serve_data_file(filename):
+    """Serve files from the data directory (background images)."""
+    # Only allow image files to be served
+    allowed = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in allowed:
+        return jsonify({"error": "Not found"}), 404
+    return send_from_directory(config.DATA_DIR, filename)
 
 
 @app.route("/api/refresh", methods=["POST"])
