@@ -1,6 +1,6 @@
-# Family Home Dashboard
+# The Home Launchpad
 
-A touch-optimized home dashboard for a 24" Dell touchscreen on a Raspberry Pi 4. Five tabs: Today + This Week, Lists, Calendar, Home, Money.
+A touch-optimized family command center for a 24" Dell touchscreen on a Raspberry Pi 4. Five tabs: Today + This Week, Lists, Calendar, Home, Money.
 
 ## Architecture
 
@@ -216,6 +216,122 @@ A built-in on-screen keyboard appears when adding or editing items. It covers th
 
 ---
 
+## Updating the Dashboard
+
+When new changes are pushed to the repo, update the Pi:
+
+```bash
+cd /home/pi/family-dashboard
+git pull origin main
+```
+
+If you're running the dashboard as a systemd service, restart it:
+
+```bash
+sudo systemctl restart family-dashboard
+```
+
+If you're running it manually, stop the process (Ctrl+C) and relaunch:
+
+```bash
+python3 app.py
+```
+
+Then refresh the browser (F5 or tap the Refresh button in the Home tab). Since the entire UI is a single HTML file served by Flask, pulling and restarting picks up all changes immediately.
+
+If dependencies changed (check `requirements.txt`):
+
+```bash
+pip install -r requirements.txt --break-system-packages
+```
+
+---
+
+## Apple Reminders Sync
+
+The dashboard supports two modes for lists: **iCloud sync** (two-way with Apple Reminders on your iPhone/Mac) and **local-only** (JSON files on the Pi). Local-only is the default and works out of the box.
+
+### Local-Only Mode (Default)
+
+Lists are stored as JSON files in `data/reminders_*.json`. You can add, check off, edit, and delete items directly from the touchscreen. This is reliable and has zero external dependencies. The tradeoff is that changes on the dashboard don't sync to your phone and vice versa.
+
+### iCloud Sync Mode
+
+To enable two-way sync with Apple Reminders:
+
+1. **Install pyicloud:**
+
+   ```bash
+   pip install pyicloud --break-system-packages
+   ```
+
+2. **Authenticate with iCloud:**
+
+   ```bash
+   cd /home/pi/family-dashboard
+   python3 -c "
+   from pyicloud import PyiCloudService
+   api = PyiCloudService('YOUR_APPLE_ID@icloud.com', 'YOUR_PASSWORD')
+   if api.requires_2fa:
+       code = input('Enter 2FA code sent to your device: ')
+       api.validate_2fa_code(code)
+       print('Authenticated!')
+   "
+   ```
+
+3. **Create matching lists in Apple Reminders** (exact names):
+   - Daily Chores
+   - Weekly Chores
+   - Things to Talk About
+   - Home Projects
+   - Vacation Planning
+
+4. **Store credentials** (so the dashboard can reconnect automatically):
+
+   Create `data/icloud_creds.json`:
+   ```json
+   {
+     "apple_id": "YOUR_APPLE_ID@icloud.com",
+     "password": "YOUR_APP_SPECIFIC_PASSWORD"
+   }
+   ```
+
+   Use an [app-specific password](https://support.apple.com/en-us/102654) rather than your main Apple ID password.
+
+### How Sync Works
+
+- On each page load or 5-minute refresh, the dashboard pulls the latest items from iCloud and saves them locally as a backup
+- Items added on the touchscreen are pushed to iCloud immediately and also saved locally
+- If iCloud is unreachable (network issues, session expired), the dashboard falls back to the local JSON files seamlessly
+- Completions and deletions made on the touchscreen currently only update the local copy (iCloud write-back for these is a future improvement)
+
+### Re-authenticating
+
+iCloud sessions expire periodically. When that happens the dashboard quietly falls back to local data. To re-authenticate:
+
+```bash
+cd /home/pi/family-dashboard
+python3 -c "
+from pyicloud import PyiCloudService
+api = PyiCloudService('YOUR_APPLE_ID@icloud.com', 'YOUR_PASSWORD')
+if api.requires_2fa:
+    code = input('Enter 2FA code: ')
+    api.validate_2fa_code(code)
+print('Re-authenticated!')
+"
+```
+
+Then restart the dashboard service.
+
+---
+
+## Planned Integrations
+
+- **Google Home / Chromecast**: Show "Now Playing" track info from Google Home speakers
+- **Ecobee Thermostat**: Display current temperature, set point, and HVAC mode
+
+---
+
 ## File Structure
 
 ```
@@ -229,11 +345,13 @@ family-dashboard/
 ├── google_sheets.py        # Google Sheets API (budget)
 ├── setup_google_oauth.py   # One-time OAuth setup script
 ├── requirements.txt        # Python dependencies
-├── client_secret.json      # (you provide) Google OAuth credentials
+├── .gitignore              # Excludes secrets & data files from git
 ├── templates/
 │   └── index.html          # Full single-page dashboard UI
-└── data/                   # (auto-created) settings, tokens, list data
+├── client_secret.json      # (you provide, gitignored) Google OAuth credentials
+└── data/                   # (auto-created, gitignored) runtime data
     ├── settings.json
     ├── google_token.json
+    ├── icloud_creds.json   # (optional) Apple ID for Reminders sync
     └── reminders_*.json    # Local list data
 ```
