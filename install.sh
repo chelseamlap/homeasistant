@@ -22,7 +22,12 @@ fi
 # --- Install system deps ---
 echo "→ Installing system dependencies..."
 sudo apt update -qq
-sudo apt install -y -qq python3 python3-pip chromium-browser git
+# chromium-browser was renamed to chromium in newer Pi OS
+CHROMIUM_PKG="chromium-browser"
+if ! apt-cache show chromium-browser &>/dev/null; then
+    CHROMIUM_PKG="chromium"
+fi
+sudo apt install -y -qq python3 python3-pip $CHROMIUM_PKG git
 
 # --- Install Python packages ---
 echo "→ Installing Python packages..."
@@ -127,7 +132,13 @@ fi
 echo ""
 read -p "Auto-launch Chrome on boot? (y/n): " AUTO_CHROME
 if [[ "$AUTO_CHROME" == "y" ]]; then
-    CHROME_CMD="chromium-browser --start-maximized --noerrdialogs --disable-infobars --app=http://localhost:5000"
+    # Detect correct chromium binary name
+    if command -v chromium-browser &>/dev/null; then
+        CHROMIUM_BIN="chromium-browser"
+    else
+        CHROMIUM_BIN="chromium"
+    fi
+    CHROME_CMD="$CHROMIUM_BIN --start-maximized --noerrdialogs --disable-infobars --app=http://localhost:5000"
     INSTALLED=false
 
     # Method 1: XDG autostart (works on most desktop environments)
@@ -181,7 +192,7 @@ echo ""
 echo "  Dashboard: http://localhost:5000"
 echo ""
 echo "  To open now:"
-echo "  chromium-browser --start-maximized --app=http://localhost:5000"
+echo "  chromium --start-maximized --app=http://localhost:5000"
 echo ""
 echo "  Next steps:"
 echo "  • Create these lists in Apple Reminders on your phone:"

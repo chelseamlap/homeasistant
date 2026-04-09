@@ -303,7 +303,9 @@ if __name__ == "__main__":
                     f"--app={url}", "--new-window"
                 ])
             elif system == "Linux":
-                subprocess.Popen(["chromium-browser", f"--app={url}", "--start-maximized"])
+                import shutil
+                chromium = shutil.which("chromium-browser") or shutil.which("chromium") or "chromium"
+                subprocess.Popen([chromium, f"--app={url}", "--start-maximized"])
             else:
                 webbrowser.open(url)
         except FileNotFoundError:
