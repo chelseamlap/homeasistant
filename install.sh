@@ -23,10 +23,14 @@ fi
 echo "→ Installing system dependencies..."
 sudo apt update -qq
 # chromium-browser was renamed to chromium in newer Pi OS
-CHROMIUM_PKG="chromium-browser"
-if ! apt-cache show chromium-browser &>/dev/null; then
+if apt-cache policy chromium-browser 2>/dev/null | grep -q "Candidate: (none)"; then
+    CHROMIUM_PKG="chromium"
+elif apt-cache policy chromium-browser 2>/dev/null | grep -q "Candidate:"; then
+    CHROMIUM_PKG="chromium-browser"
+else
     CHROMIUM_PKG="chromium"
 fi
+echo "  Using package: $CHROMIUM_PKG"
 sudo apt install -y -qq python3 python3-pip $CHROMIUM_PKG git
 
 # --- Install Python packages ---
