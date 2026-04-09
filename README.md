@@ -291,8 +291,8 @@ The dashboard connects to Apple Reminders with three backends, chosen automatica
 Lists are configured from the **Home tab → Apple Reminders** section:
 
 1. The dashboard auto-discovers all available lists from your Apple account
-2. Toggle which lists to display on the dashboard
-3. Star lists to show them on the Today tab
+2. Each list has two checkboxes: **Lists Tab** (shows on the Lists tab) and **Today Tab** (shows on the Today tab)
+3. Lists on the Today tab appear side-by-side at half width
 4. Hit "Save List Selection" — config is stored in `data/settings.json`
 
 You can also edit `data/settings.json` directly:
