@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
-from google_auth import get_credentials
+from server.google_auth import get_credentials
 
 logger = logging.getLogger(__name__)
 

@@ -9,18 +9,18 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 
 import config
 from config import get_reminders_lists, get_reminders_list_name
-from weather import fetch_weather
-from reminders_bridge import (
+from server.weather import fetch_weather
+from server.reminders_bridge import (
     get_items, add_item, complete_item, uncomplete_item,
     delete_item, update_item, reset_daily_chores, reset_weekly_chores,
     discover_lists,
 )
-from google_calendar import (
+from server.google_calendar import (
     get_today_events, get_week_events, get_upcoming_events,
     get_month_events, discover_calendars,
 )
-from google_sheets import get_budget_data
-from google_auth import is_authenticated
+from server.google_sheets import get_budget_data
+from server.google_auth import is_authenticated
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

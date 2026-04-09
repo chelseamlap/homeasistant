@@ -26,7 +26,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets.readonly",
 ]
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Project root is one level up from server/
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLIENT_SECRETS = os.path.join(BASE_DIR, "client_secret.json")
 TOKEN_FILE = os.path.join(BASE_DIR, "data", "google_token.json")
 
