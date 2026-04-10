@@ -241,21 +241,42 @@ def api_save_settings():
 
 @app.route("/api/settings/background", methods=["POST"])
 def api_upload_background():
-    """Upload a background image."""
+    """Upload a background image.
+
+    Resizes to max 1920x1920 (preserving aspect ratio) and re-encodes as
+    JPEG at quality 85 so the kiosk browser — which runs with software
+    rasterization on the Pi — never has to decode a multi-megapixel image.
+    A full-res phone photo will hang chromium's compositor thread and
+    crash-loop the renderer.
+    """
+    from PIL import Image, ImageOps
+
     if "image" not in request.files:
         return jsonify({"error": "No image provided"}), 400
     f = request.files["image"]
     if not f.filename:
         return jsonify({"error": "No file selected"}), 400
-    # Remove old backgrounds
+    ext = os.path.splitext(f.filename)[1].lower()
+    allowed = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+    if ext and ext not in allowed:
+        return jsonify({"error": "Unsupported image format"}), 400
+
+    # Remove old backgrounds (any extension)
     for old in globmod.glob(os.path.join(config.DATA_DIR, "background.*")):
         os.remove(old)
-    ext = os.path.splitext(f.filename)[1].lower() or ".jpg"
-    allowed = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-    if ext not in allowed:
-        return jsonify({"error": "Unsupported image format"}), 400
-    filename = "background" + ext
-    f.save(os.path.join(config.DATA_DIR, filename))
+
+    try:
+        img = Image.open(f.stream)
+        img = ImageOps.exif_transpose(img)  # respect EXIF orientation
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        img.thumbnail((1920, 1920), Image.LANCZOS)
+        filename = "background.jpg"
+        out_path = os.path.join(config.DATA_DIR, filename)
+        img.save(out_path, "JPEG", quality=85, optimize=True)
+    except Exception as e:
+        return jsonify({"error": f"Failed to process image: {e}"}), 400
+
     url = f"/data/{filename}"
     settings = config.load_settings()
     settings["background_url"] = url
