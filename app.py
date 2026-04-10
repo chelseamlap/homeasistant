@@ -333,29 +333,35 @@ if __name__ == "__main__":
     port = config.PORT
     logger.info(f"Starting The Home Launchpad on port {port}")
 
-    # Open Chrome in app mode (no URL bar/tabs) after Flask starts
-    import subprocess
-    import platform
+    # Auto-open the dashboard in a browser when run interactively on a dev
+    # machine. Skip this under systemd (the Pi kiosk has labwc autostart
+    # spawn chromium itself) — otherwise every service restart launches a
+    # stray chromium window that fights with the kiosk.
+    running_under_systemd = bool(os.environ.get("INVOCATION_ID"))
 
-    def open_app_mode():
-        url = f"http://localhost:{port}"
-        system = platform.system()
-        try:
-            if system == "Darwin":
-                # --new-window ensures app mode even if Chrome is already running
-                subprocess.Popen([
-                    "open", "-na", "Google Chrome", "--args",
-                    f"--app={url}", "--new-window"
-                ])
-            elif system == "Linux":
-                import shutil
-                chromium = shutil.which("chromium-browser") or shutil.which("chromium") or "chromium"
-                subprocess.Popen([chromium, f"--app={url}", "--start-maximized", "--password-store=basic"])
-            else:
+    if not running_under_systemd:
+        import subprocess
+        import platform
+
+        def open_app_mode():
+            url = f"http://localhost:{port}"
+            system = platform.system()
+            try:
+                if system == "Darwin":
+                    # --new-window ensures app mode even if Chrome is already running
+                    subprocess.Popen([
+                        "open", "-na", "Google Chrome", "--args",
+                        f"--app={url}", "--new-window"
+                    ])
+                elif system == "Linux":
+                    import shutil
+                    chromium = shutil.which("chromium-browser") or shutil.which("chromium") or "chromium"
+                    subprocess.Popen([chromium, f"--app={url}", "--start-maximized", "--password-store=basic"])
+                else:
+                    webbrowser.open(url)
+            except FileNotFoundError:
                 webbrowser.open(url)
-        except FileNotFoundError:
-            webbrowser.open(url)
 
-    threading.Timer(1.5, open_app_mode).start()
+        threading.Timer(1.5, open_app_mode).start()
 
     app.run(host="0.0.0.0", port=port, debug=False)
