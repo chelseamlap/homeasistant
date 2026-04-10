@@ -1213,26 +1213,63 @@ let kbNumMode = false;
 let longPressTimer = null;
 
 /* ============================================================
-   TAB SWITCHING
+   DATA CACHE — avoids redundant fetches on rapid tab switches.
+   GET requests are cached for CACHE_TTL_MS; POST/mutation calls
+   bypass the cache entirely and invalidate related entries.
    ============================================================ */
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+const _dataCache = {};
+
+function _cacheKey(url) { return url; }
+
+function _getCached(url) {
+  const entry = _dataCache[_cacheKey(url)];
+  if (entry && Date.now() - entry.ts < CACHE_TTL_MS) return entry.data;
+  return undefined;
+}
+
+function _setCache(url, data) {
+  _dataCache[_cacheKey(url)] = { data, ts: Date.now() };
+}
+
+function invalidateCache(prefix) {
+  for (const k of Object.keys(_dataCache)) {
+    if (!prefix || k.startsWith(prefix)) delete _dataCache[k];
+  }
+}
+
+/* ============================================================
+   TAB SWITCHING — debounced to ignore rapid taps
+   ============================================================ */
+let _switchTimer = null;
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
-  if (tab === 'today') loadToday();
-  if (tab === 'lists') loadAllLists();
-  if (tab === 'calendar') loadCalendar();
-  if (tab === 'home') loadHome();
-  if (tab === 'money') loadMoney();
+  clearTimeout(_switchTimer);
+  _switchTimer = setTimeout(() => {
+    if (tab === 'today') loadToday();
+    if (tab === 'lists') loadAllLists();
+    if (tab === 'calendar') loadCalendar();
+    if (tab === 'home') loadHome();
+    if (tab === 'money') loadMoney();
+  }, 80);
 }
 
 /* ============================================================
-   API HELPER
+   API HELPER — with transparent GET caching
    ============================================================ */
 async function api(url, opts) {
+  const isGet = !opts || !opts.method || opts.method === 'GET';
+  if (isGet) {
+    const cached = _getCached(url);
+    if (cached !== undefined) return cached;
+  }
   try {
     const r = await fetch(url, opts);
-    return await r.json();
+    const data = await r.json();
+    if (isGet) _setCache(url, data);
+    return data;
   } catch (e) {
     console.error('API error:', url, e);
     return null;
@@ -1431,6 +1468,7 @@ async function getListsConfig() {
 
 /* Reload a single list */
 async function reloadList(listKey) {
+  invalidateCache(`/api/reminders/${listKey}`);
   const data = await api(`/api/reminders/${listKey}`);
   if (!data) return;
   // Update in Lists tab
@@ -1462,11 +1500,12 @@ async function loadToday() {
     </div>
   `).join('');
 
-  // Fetch data in parallel
+  // Fetch data in parallel (including settings for weekend intentions)
   const fetches = [
     api('/api/weather'),
     api('/api/calendar/today'),
     api('/api/calendar/week'),
+    api('/api/settings'),
     ...todayLists.map(l => api(`/api/reminders/${l.key}`)),
     api('/api/reminders/things_to_talk_about'),
   ];
@@ -1475,7 +1514,8 @@ async function loadToday() {
   const weather = results[0];
   const todayEvents = results[1];
   const weekEvents = results[2];
-  const listResults = results.slice(3, 3 + todayLists.length);
+  const weekendSettings = results[3];
+  const listResults = results.slice(4, 4 + todayLists.length);
   const talk = results[results.length - 1];
 
   renderWeatherCurrent(weather);
@@ -1488,8 +1528,6 @@ async function loadToday() {
 
   if (talk) renderList(talk.items, 'talk-preview', 'things_to_talk_about', {limit: 5});
 
-  // Weekend intentions from settings
-  const weekendSettings = await api('/api/settings');
   if (weekendSettings) {
     document.getElementById('intention-sat').textContent = weekendSettings.weekend_sat || 'Tap to add plans...';
     document.getElementById('intention-sun').textContent = weekendSettings.weekend_sun || 'Tap to add plans...';
@@ -1889,10 +1927,13 @@ async function saveSettings() {
       lists_backend: document.getElementById('setting-lists-backend').value,
     })
   });
+  invalidateCache();  // settings change can affect weather, lists, etc.
+  _listsConfig = null;
   showToast('Settings saved — restart the dashboard service for backend changes to take effect');
 }
 
 async function refreshAll() {
+  invalidateCache();
   await api('/api/refresh', {method: 'POST'});
   loadToday();
   showToast('All data refreshed');

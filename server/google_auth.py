@@ -15,6 +15,7 @@ SETUP:
 import os
 import json
 import logging
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -69,7 +70,8 @@ def run_oauth_flow(port=8090):
 
 
 def _save_token(creds):
-    """Save credentials to disk."""
+    """Save credentials to disk with restrictive permissions."""
     os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
     with open(TOKEN_FILE, "w") as f:
         f.write(creds.to_json())
+    os.chmod(TOKEN_FILE, 0o600)

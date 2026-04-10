@@ -35,15 +35,23 @@ _google_tasks_mod = None
 
 def _get_backend():
     """Read the configured backend from settings. Returns one of:
-    'apple_sync', 'todoist', 'google_tasks', 'local'."""
-    if _IS_MACOS:
-        return "macos"
+    'macos', 'apple_sync', 'todoist', 'google_tasks', 'local'.
+    On macOS, defaults to 'macos' (native Reminders) but respects the
+    user's explicit choice if they've selected a different backend."""
     settings_path = os.path.join(DATA_DIR, "settings.json")
+    configured = None
     if os.path.exists(settings_path):
         with open(settings_path) as f:
             settings = json.load(f)
-        return settings.get("lists_backend", "apple_sync")
-    return "apple_sync"
+        configured = settings.get("lists_backend")
+    if configured:
+        # User made an explicit choice — honour it on any platform.
+        # "macos" is only valid on macOS; silently fall back if misconfigured.
+        if configured == "macos" and not _IS_MACOS:
+            return "apple_sync"
+        return configured
+    # No explicit setting — pick a sensible default.
+    return "macos" if _IS_MACOS else "apple_sync"
 
 
 def _get_todoist():

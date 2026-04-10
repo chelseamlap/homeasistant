@@ -1,6 +1,6 @@
 """Todoist integration for Reminders/Tasks lists.
 
-Uses the Todoist REST API v2. Supports shared projects (lists),
+Uses the Todoist API v1. Supports shared projects (lists),
 full CRUD, and works from any device.
 
 Setup:
@@ -17,7 +17,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-_BASE = "https://api.todoist.com/rest/v2"
+_BASE = "https://api.todoist.com/api/v1"
 _TOKEN = None
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
@@ -49,7 +49,11 @@ def _api_get(path, params=None):
         return None
     resp = requests.get(f"{_BASE}/{path}", headers=h, params=params, timeout=10)
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    # v1 API wraps collections in {"results": [...]}
+    if isinstance(data, dict) and "results" in data:
+        return data["results"]
+    return data
 
 
 def _api_post(path, body=None):
@@ -138,18 +142,18 @@ def get_items(list_name):
         active = _api_get("tasks", params={"project_id": project_id}) or []
         items = [_task_to_item(t) for t in active]
 
-        # Get completed tasks via Sync API
+        # Get completed tasks via v1 API
         try:
             h = _headers()
             resp = requests.get(
-                "https://api.todoist.com/sync/v9/completed/get_all",
+                f"{_BASE}/tasks/completed_by_completion_date",
                 headers=h,
                 params={"project_id": project_id, "limit": 100},
                 timeout=10,
             )
             if resp.ok:
                 completed_data = resp.json()
-                for t in completed_data.get("items", []):
+                for t in completed_data.get("results", completed_data.get("items", [])):
                     items.append({
                         "id": t["id"],
                         "title": t.get("content", ""),
@@ -228,10 +232,10 @@ def reset_list(list_name):
     if not project_id:
         return None
     try:
-        # Get completed tasks
+        # Get completed tasks via v1 API
         h = _headers()
         resp = requests.get(
-            "https://api.todoist.com/sync/v9/completed/get_all",
+            f"{_BASE}/tasks/completed_by_completion_date",
             headers=h,
             params={"project_id": project_id, "limit": 100},
             timeout=10,

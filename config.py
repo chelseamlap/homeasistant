@@ -8,9 +8,9 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 # --- Location (for weather) ---
 # Default: set via Home tab settings, stored in data/settings.json
-DEFAULT_LAT = 40.7128
-DEFAULT_LON = -74.0060
-DEFAULT_LOCATION_NAME = "New York, NY"
+DEFAULT_LAT = 39.6133
+DEFAULT_LON = -105.0166
+DEFAULT_LOCATION_NAME = "Littleton, CO"
 
 # --- Google OAuth2 ---
 GOOGLE_CLIENT_SECRETS_FILE = os.path.join(BASE_DIR, "client_secret.json")
