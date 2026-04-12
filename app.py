@@ -314,6 +314,56 @@ def api_exit_kiosk():
     return jsonify({"ok": True})
 
 
+# ============================================================
+# Message Board API
+# ============================================================
+
+_MESSAGES_FILE = os.path.join(config.DATA_DIR, "messages.json")
+
+
+def _load_messages():
+    """Load messages, auto-clearing any older than 24 hours."""
+    if not os.path.exists(_MESSAGES_FILE):
+        return []
+    with open(_MESSAGES_FILE) as f:
+        msgs = json.load(f)
+    cutoff = (datetime.now() - __import__('datetime').timedelta(hours=24)).isoformat()
+    fresh = [m for m in msgs if m.get("ts", "") > cutoff]
+    if len(fresh) != len(msgs):
+        _save_messages(fresh)
+    return fresh
+
+
+def _save_messages(msgs):
+    with open(_MESSAGES_FILE, "w") as f:
+        json.dump(msgs, f, indent=2)
+
+
+@app.route("/api/messages")
+def api_get_messages():
+    return jsonify(_load_messages())
+
+
+@app.route("/api/messages", methods=["POST"])
+def api_add_message():
+    data = request.get_json()
+    text = data.get("text", "").strip()
+    if not text:
+        return jsonify({"error": "Text required"}), 400
+    msgs = _load_messages()
+    msgs.append({"id": str(__import__('uuid').uuid4()), "text": text, "ts": datetime.now().isoformat()})
+    _save_messages(msgs)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/messages/<msg_id>", methods=["DELETE"])
+def api_delete_message(msg_id):
+    msgs = _load_messages()
+    msgs = [m for m in msgs if m["id"] != msg_id]
+    _save_messages(msgs)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/refresh", methods=["POST"])
 def api_refresh_all():
     """Manual refresh trigger — resets chores and returns status."""

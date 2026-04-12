@@ -244,7 +244,100 @@ h2.section-title:first-child { margin-top: 0; }
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-#panel-today { overflow-y: hidden; }
+#panel-today { overflow-y: hidden; display: flex; flex-direction: column; }
+#panel-today.active { display: flex; }
+#panel-today .two-col { flex: 1; min-height: 0; }
+
+/* Greeting bar */
+.greeting-bar {
+  flex-shrink: 0;
+  padding: 8px 4px 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.greeting-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+.greeting-date {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+/* Countdowns */
+.countdown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.countdown-days {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 36px;
+  text-align: right;
+}
+.countdown-unit {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.countdown-label {
+  font-size: 13px;
+  color: var(--text);
+  flex: 1;
+}
+.countdown-date {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Message board */
+.msg-add-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #000;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.msg-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.msg-item:last-child { border-bottom: none; }
+.msg-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.3;
+}
+.msg-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.msg-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+}
 
 /* ============================================================
    WEATHER (compact: current left, hourly right)
@@ -651,6 +744,13 @@ h2.section-title:first-child { margin-top: 0; }
   font-size: 14px;
 }
 
+/* Settings two-column layout */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 /* ============================================================
    MONEY TAB
    ============================================================ */
@@ -946,11 +1046,11 @@ h2.section-title:first-child { margin-top: 0; }
     <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')">
       <span class="tab-icon">&#128197;</span> Calendar
     </button>
-    <button class="tab-btn" data-tab="home" onclick="switchTab('home')">
-      <span class="tab-icon">&#9881;</span> Home
-    </button>
     <button class="tab-btn" data-tab="money" onclick="switchTab('money')">
       <span class="tab-icon">&#128176;</span> Money
+    </button>
+    <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
+      <span class="tab-icon">&#9881;</span> Settings
     </button>
   </nav>
 
@@ -960,6 +1060,9 @@ h2.section-title:first-child { margin-top: 0; }
          TAB 1: TODAY + THIS WEEK
          ============================================================ -->
     <div class="tab-panel active" id="panel-today">
+      <!-- Date/greeting banner spans full width above columns -->
+      <div class="greeting-bar" id="greeting-bar"></div>
+
       <div class="two-col">
         <!-- LEFT: TODAY -->
         <div class="col" id="today-left">
@@ -1001,6 +1104,21 @@ h2.section-title:first-child { margin-top: 0; }
             </div>
           </div>
 
+          <!-- Countdowns (from calendar) -->
+          <div class="card" id="countdowns-card" style="display:none;">
+            <div class="card-title">Coming Up</div>
+            <div id="countdowns"></div>
+          </div>
+
+          <!-- Family Message Board -->
+          <div class="card">
+            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Message Board</span>
+              <button class="msg-add-btn" onclick="addMessage()">+</button>
+            </div>
+            <div id="message-board"><div class="empty-state">No messages</div></div>
+          </div>
+
           <!-- This Week's Events -->
           <div class="card">
             <div class="card-title">This Week</div>
@@ -1035,93 +1153,90 @@ h2.section-title:first-child { margin-top: 0; }
     </div>
 
     <!-- ============================================================
-         TAB 4: HOME
+         TAB: SETTINGS
          ============================================================ -->
-    <div class="tab-panel" id="panel-home">
-      <h2 class="section-title">Apple Reminders</h2>
-      <div class="card">
-        <div style="margin-bottom:10px; color:var(--text-dim); font-size:0.95rem;">
-          Choose which Reminders lists appear on each tab.
-        </div>
-        <div id="reminders-list-picker" class="loading">Discovering lists...</div>
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <button class="btn btn-primary" onclick="saveListConfig()">Save List Selection</button>
-          <button class="btn btn-outline" onclick="discoverLists()">Refresh Lists</button>
-        </div>
-      </div>
-
-      <h2 class="section-title">Google Calendars</h2>
-      <div class="card">
-        <div style="margin-bottom:10px; color:var(--text-dim); font-size:0.95rem;">
-          Select which Google calendars appear on the dashboard.
-        </div>
-        <div id="calendar-picker" class="loading">Discovering calendars...</div>
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <button class="btn btn-primary" onclick="saveCalendarConfig()">Save Calendar Selection</button>
-          <button class="btn btn-outline" onclick="discoverCalendars()">Refresh Calendars</button>
-        </div>
-      </div>
-
-      <h2 class="section-title">Appearance</h2>
-      <div class="card">
-        <div class="settings-row">
-          <span class="settings-label">Theme</span>
-          <select class="settings-input" id="setting-theme" onchange="applyTheme(this.value)">
-            <option value="system">System (dark at night, light by day)</option>
-            <option value="dark">Dark</option>
-            <option value="light">Light (Home Assistant)</option>
-            <option value="warm">Warm</option>
-          </select>
-        </div>
-        <div class="settings-row">
-          <span class="settings-label">Background Image</span>
-          <input class="settings-input" id="setting-bg-file" type="file" accept="image/*" onchange="uploadBackground(this)" style="padding:8px 12px;">
-        </div>
-        <div id="bg-preview-row" class="settings-row" style="display:none;">
-          <span class="settings-label">Current Background</span>
-          <div style="display:flex; align-items:center; gap:10px; flex:1;">
-            <img id="bg-preview-thumb" style="height:48px; border-radius:6px; object-fit:cover;" alt="">
-            <button class="btn btn-outline" onclick="removeBackground()" style="padding:8px 14px; font-size:13px;">Remove</button>
+    <div class="tab-panel" id="panel-settings">
+      <div class="settings-grid">
+        <div>
+          <div class="card">
+            <div class="card-title">Lists</div>
+            <div id="reminders-list-picker" class="loading">Discovering lists...</div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <button class="btn btn-primary" onclick="saveListConfig()">Save</button>
+              <button class="btn btn-outline" onclick="discoverLists()">Refresh</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Calendars</div>
+            <div id="calendar-picker" class="loading">Discovering calendars...</div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <button class="btn btn-primary" onclick="saveCalendarConfig()">Save</button>
+              <button class="btn btn-outline" onclick="discoverCalendars()">Refresh</button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <h2 class="section-title">Settings</h2>
-      <div class="card">
-        <div class="settings-row">
-          <span class="settings-label">Location</span>
-          <input class="settings-input" id="setting-location" type="text" placeholder="City, State">
-        </div>
-        <div class="settings-row">
-          <span class="settings-label">Latitude</span>
-          <input class="settings-input" id="setting-lat" type="number" step="0.0001">
-        </div>
-        <div class="settings-row">
-          <span class="settings-label">Longitude</span>
-          <input class="settings-input" id="setting-lon" type="number" step="0.0001">
-        </div>
-        <div class="settings-row">
-          <span class="settings-label">Budget Sheet ID</span>
-          <input class="settings-input" id="setting-sheet" type="text" placeholder="Google Sheet ID">
-        </div>
-        <div class="settings-row">
-          <span class="settings-label">Lists Backend</span>
-          <select class="settings-input" id="setting-lists-backend">
-            <option value="apple_sync">Apple Reminders (Mac sync)</option>
-            <option value="todoist">Todoist</option>
-            <option value="google_tasks">Google Tasks</option>
-            <option value="local">Local only</option>
-          </select>
-        </div>
-        <div id="backend-setup-hint" class="settings-hint" style="padding:6px 0 0 0; font-size:0.85em; opacity:0.7;"></div>
-        <div class="settings-row">
-          <span class="settings-label">Google Account</span>
-          <span id="google-status"></span>
-        </div>
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-          <button class="btn btn-outline" onclick="refreshAll()">Refresh All Data</button>
-          <button class="btn btn-outline" onclick="exitKiosk()" style="margin-left:auto; opacity:0.6;">Exit Kiosk</button>
+        <div>
+          <div class="card">
+            <div class="card-title">Appearance</div>
+            <div class="settings-row">
+              <span class="settings-label">Theme</span>
+              <select class="settings-input" id="setting-theme" onchange="applyTheme(this.value)">
+                <option value="system">System (auto)</option>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+                <option value="warm">Warm</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Background</span>
+              <input class="settings-input" id="setting-bg-file" type="file" accept="image/*" onchange="uploadBackground(this)" style="padding:6px 10px;">
+            </div>
+            <div id="bg-preview-row" class="settings-row" style="display:none;">
+              <span class="settings-label"></span>
+              <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                <img id="bg-preview-thumb" style="height:36px; border-radius:4px; object-fit:cover;" alt="">
+                <button class="btn btn-outline" onclick="removeBackground()" style="padding:4px 10px; font-size:12px;">Remove</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Configuration</div>
+            <div class="settings-row">
+              <span class="settings-label">Location</span>
+              <input class="settings-input" id="setting-location" type="text" placeholder="City, State">
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Latitude</span>
+              <input class="settings-input" id="setting-lat" type="number" step="0.0001">
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Longitude</span>
+              <input class="settings-input" id="setting-lon" type="number" step="0.0001">
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Budget Sheet</span>
+              <input class="settings-input" id="setting-sheet" type="text" placeholder="Google Sheet ID">
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Lists Backend</span>
+              <select class="settings-input" id="setting-lists-backend">
+                <option value="apple_sync">Apple Reminders</option>
+                <option value="todoist">Todoist</option>
+                <option value="google_tasks">Google Tasks</option>
+                <option value="local">Local only</option>
+              </select>
+            </div>
+            <div id="backend-setup-hint" style="font-size:0.8em; opacity:0.6; padding:4px 0;"></div>
+            <div class="settings-row">
+              <span class="settings-label">Google</span>
+              <span id="google-status"></span>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+              <button class="btn btn-outline" onclick="refreshAll()">Refresh All</button>
+              <button class="btn btn-outline" onclick="exitKiosk()" style="margin-left:auto; opacity:0.5; font-size:12px;">Exit Kiosk</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1265,7 +1380,7 @@ function switchTab(tab) {
     if (tab === 'today') loadToday();
     if (tab === 'lists') loadAllLists();
     if (tab === 'calendar') loadCalendar();
-    if (tab === 'home') loadHome();
+    if (tab === 'settings') loadSettings();
     if (tab === 'money') loadMoney();
   }, 80);
 }
@@ -1531,9 +1646,105 @@ async function reloadList(listKey) {
 }
 
 /* ============================================================
+   GREETING, COUNTDOWNS, MESSAGE BOARD
+   ============================================================ */
+function renderGreeting() {
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const dateStr = now.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric'});
+  document.getElementById('greeting-bar').innerHTML =
+    `<span class="greeting-text">${greeting}</span><span class="greeting-date">${dateStr}</span>`;
+}
+
+function renderCountdowns(events) {
+  const el = document.getElementById('countdowns');
+  const card = document.getElementById('countdowns-card');
+  if (!events || !events.length) { card.style.display = 'none'; return; }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const countdowns = [];
+  const seen = new Set();
+
+  events.forEach(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    const diff = Math.round((d - today) / 86400000);
+    if (diff < 2) return; // skip today/tomorrow — already on schedule
+    // Deduplicate recurring events by name
+    const key = e.summary.toLowerCase().trim();
+    if (seen.has(key)) return;
+    seen.add(key);
+    countdowns.push({summary: e.summary, days: diff, date: d, color: e.calendar_color});
+  });
+
+  if (!countdowns.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  // Show at most 5 nearest
+  countdowns.sort((a,b) => a.days - b.days);
+  el.innerHTML = countdowns.slice(0, 5).map(c => {
+    const dateStr = c.date.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    const colorDot = c.color ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};margin-right:4px;"></span>` : '';
+    return `<div class="countdown-row">
+      <div><div class="countdown-days">${c.days}</div><div class="countdown-unit">days</div></div>
+      <div class="countdown-label">${colorDot}${escHTML(c.summary)}</div>
+      <div class="countdown-date">${dateStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('message-board');
+  if (!msgs || !msgs.length) {
+    el.innerHTML = '<div class="empty-state">No messages</div>';
+    return;
+  }
+  el.innerHTML = msgs.map(m => {
+    const d = new Date(m.ts);
+    const ago = _timeAgo(d);
+    return `<div class="msg-item">
+      <div class="msg-text">${escHTML(m.text)}</div>
+      <div class="msg-time">${ago}</div>
+      <button class="msg-dismiss" onclick="dismissMessage('${m.id}')">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+function _timeAgo(d) {
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+async function addMessage() {
+  openKeyboard('', async (text) => {
+    if (text && text.trim()) {
+      await api('/api/messages', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({text: text.trim()})
+      });
+      invalidateCache('/api/messages');
+      const msgs = await api('/api/messages');
+      renderMessages(msgs);
+    }
+  });
+}
+
+async function dismissMessage(id) {
+  await api(`/api/messages/${id}`, {method: 'DELETE'});
+  invalidateCache('/api/messages');
+  const msgs = await api('/api/messages');
+  renderMessages(msgs);
+}
+
+/* ============================================================
    DATA LOADING
    ============================================================ */
 async function loadToday() {
+  renderGreeting();
   const lists = await getListsConfig();
 
   // Build today-lists cards for lists with show_on_today
@@ -1546,12 +1757,14 @@ async function loadToday() {
     </div>
   `).join('');
 
-  // Fetch data in parallel (including settings for weekend intentions)
+  // Fetch data in parallel
   const fetches = [
     api('/api/weather'),
     api('/api/calendar/today'),
     api('/api/calendar/week'),
     api('/api/settings'),
+    api('/api/calendar/upcoming?days=60'),
+    api('/api/messages'),
     ...todayLists.map(l => api(`/api/reminders/${l.key}`)),
   ];
   const results = await Promise.all(fetches);
@@ -1560,11 +1773,15 @@ async function loadToday() {
   const todayEvents = results[1];
   const weekEvents = results[2];
   const weekendSettings = results[3];
-  const listResults = results.slice(4);
+  const upcomingEvents = results[4];
+  const messages = results[5];
+  const listResults = results.slice(6);
 
   renderWeatherCurrent(weather);
   renderEvents(todayEvents, 'today-events', false);
   renderEvents(weekEvents, 'week-events', true);
+  renderCountdowns(upcomingEvents);
+  renderMessages(messages);
 
   todayLists.forEach((l, i) => {
     if (listResults[i]) renderList(listResults[i].items, 'today-' + l.key, l.key);
@@ -1607,7 +1824,7 @@ async function loadCalendar() {
   await renderMonthView();
 }
 
-async function loadHome() {
+async function loadSettings() {
   // Fetch settings
   const settings = await api('/api/settings');
   if (settings) {
