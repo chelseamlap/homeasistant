@@ -314,7 +314,7 @@ h2.section-title:first-child { margin-top: 0; }
    ============================================================ */
 .weather-card {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr;
   gap: 12px;
   align-items: start;
 }
@@ -351,25 +351,33 @@ h2.section-title:first-child { margin-top: 0; }
 .hourly-row .h-temp { font-weight: 600; color: var(--text); min-width: 28px; text-align: right; }
 .hourly-row .h-rain { color: var(--accent); min-width: 28px; text-align: right; }
 
-/* Col 3: 7-day forecast as rows */
+/* Col 3: 7-day forecast as horizontal strip */
 .weather-daily-col {
-  overflow-y: auto;
-  max-height: 130px;
-}
-.daily-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 1px 0;
+  gap: 4px;
+  overflow-x: auto;
+  align-self: stretch;
+  align-items: stretch;
+}
+.daily-strip-item {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 4px 6px;
+  background: var(--bg-card-alt);
+  border-radius: 6px;
+  min-width: 56px;
   font-size: 11px;
   color: var(--text-dim);
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-.daily-row .d-day { font-weight: 600; color: var(--text); min-width: 28px; }
-.daily-row .d-icon { font-size: 13px; }
-.daily-row .d-hi { font-weight: 600; color: var(--text-bright); }
-.daily-row .d-lo { color: var(--text-dim); }
-.daily-row .d-rain { color: var(--accent); min-width: 28px; text-align: right; }
+.daily-strip-item .d-day { font-weight: 600; color: var(--text); font-size: 10px; }
+.daily-strip-item .d-icon { font-size: 14px; margin: 1px 0; }
+.daily-strip-item .d-temps { font-size: 12px; }
+.daily-strip-item .d-hi { font-weight: 600; color: var(--text-bright); }
+.daily-strip-item .d-lo { color: var(--text-dim); }
+.daily-strip-item .d-rain { color: var(--accent); font-size: 10px; }
 
 /* ============================================================
    EVENT LISTS
@@ -1420,14 +1428,13 @@ function renderWeatherCurrent(w) {
     </div>
   `).join('');
 
-  // Daily — vertical rows
+  // Daily — horizontal strip cards
   document.getElementById('daily-forecast').innerHTML = w.daily.map(d => `
-    <div class="daily-row">
-      <span class="d-day">${d.day_short}</span>
-      <span class="d-icon">${d.icon}</span>
-      <span class="d-hi">${d.high}°</span>
-      <span class="d-lo">${d.low}°</span>
-      <span class="d-rain">${d.rain_pct}%</span>
+    <div class="daily-strip-item">
+      <div class="d-day">${d.day_short}</div>
+      <div class="d-icon">${d.icon}</div>
+      <div class="d-temps"><span class="d-hi">${d.high}°</span> / <span class="d-lo">${d.low}°</span></div>
+      <div class="d-rain">${d.rain_pct}%</div>
     </div>
   `).join('');
 }
