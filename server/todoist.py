@@ -89,17 +89,17 @@ def _task_to_item(task):
         "created": task.get("created_at"),
         "priority": task.get("priority", 1),
         "due_date": due.get("date") if due else None,
+        "order": task.get("order", 0),
     }
 
 
 def _sort_items(items):
-    """Sort active items: priority desc (4=p1 highest), then due date asc (no-date last)."""
+    """Sort active items: priority desc, then due date asc (no-date last), then Todoist order."""
     def sort_key(item):
-        # Higher priority number = more important, so negate for descending
         pri = -(item.get("priority") or 1)
-        # No due date sorts last
         due = item.get("due_date") or "9999-99-99"
-        return (pri, due)
+        order = item.get("order") or 0
+        return (pri, due, order)
     return sorted(items, key=sort_key)
 
 
