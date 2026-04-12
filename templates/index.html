@@ -239,7 +239,12 @@ h2.section-title:first-child { margin-top: 0; }
   gap: 20px;
   height: 100%;
 }
-.col { min-width: 0; }
+.col {
+  min-width: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#panel-today { overflow-y: hidden; }
 
 /* ============================================================
    WEATHER (compact: current left, hourly right)
@@ -394,6 +399,25 @@ h2.section-title:first-child { margin-top: 0; }
   justify-content: center;
 }
 .list-row.show-delete .list-delete { display: flex; }
+
+/* Completed items collapsible group */
+.completed-divider {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 10px 14px 6px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.completed-chevron {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+.show-completed > .completed-divider .completed-chevron,
+.show-completed .completed-chevron { transform: rotate(90deg); }
+.completed-group { display: none; }
+.show-completed > .completed-group { display: block; }
 
 /* Add button */
 .add-btn {
@@ -770,7 +794,9 @@ h2.section-title:first-child { margin-top: 0; }
   flex-direction: column;
   gap: 8px;
   align-items: center;
+  transition: bottom 0.2s ease;
 }
+.kb-active .toast-container { bottom: calc(35vh + 12px); }
 .toast {
   background: var(--toast-bg);
   color: var(--toast-text);
@@ -1361,7 +1387,10 @@ function renderList(items, containerId, listKey, opts = {}) {
     return;
   }
   const filtered = opts.limit ? items.slice(0, opts.limit) : items;
-  el.innerHTML = filtered.map(item => {
+  const active = filtered.filter(i => !i.completed);
+  const done = filtered.filter(i => i.completed);
+
+  function rowHTML(item) {
     const completed = item.completed ? ' completed' : '';
     const check = item.completed ? '&#10003;' : '';
     return `
@@ -1374,7 +1403,16 @@ function renderList(items, containerId, listKey, opts = {}) {
         <div class="list-text">${escHTML(item.title)}</div>
         <button class="list-delete" onclick="event.stopPropagation();deleteItemConfirm('${listKey}','${item.id}','${escAttr(item.title)}')">&times;</button>
       </div>`;
-  }).join('');
+  }
+
+  let html = active.map(rowHTML).join('');
+  if (done.length) {
+    html += `<div class="completed-divider" onclick="this.parentNode.classList.toggle('show-completed')">
+      <span class="completed-chevron">&#9656;</span> Completed (${done.length})
+    </div>`;
+    html += `<div class="completed-group">${done.map(rowHTML).join('')}</div>`;
+  }
+  el.innerHTML = html;
 }
 
 /* ============================================================
@@ -1442,15 +1480,26 @@ function openAddItem(listKey) {
 }
 
 /* Long press for edit/delete */
+function dismissAllDeletes() {
+  document.querySelectorAll('.list-row.show-delete').forEach(r => r.classList.remove('show-delete'));
+}
+
 function startLongPress(e, listKey, id) {
   longPressTimer = setTimeout(() => {
+    dismissAllDeletes();
     const row = document.getElementById('row-' + id);
-    if (row) row.classList.toggle('show-delete');
+    if (row) row.classList.add('show-delete');
   }, 600);
 }
 function cancelLongPress() {
   if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
 }
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.list-delete') && !e.target.closest('.list-row.show-delete')) {
+    dismissAllDeletes();
+  }
+});
 
 /* Cached list config */
 let _listsConfig = null;
@@ -2005,11 +2054,13 @@ function openKeyboard(initialText, callback) {
   updateKbKeys();
   document.getElementById('kb-overlay').classList.add('active');
   document.getElementById('kb-sheet').classList.add('active');
+  document.body.classList.add('kb-active');
 }
 
 function closeKeyboard() {
   document.getElementById('kb-overlay').classList.remove('active');
   document.getElementById('kb-sheet').classList.remove('active');
+  document.body.classList.remove('kb-active');
   kbCallback = null;
 }
 
