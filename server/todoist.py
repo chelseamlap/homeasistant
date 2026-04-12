@@ -80,13 +80,27 @@ def _api_delete(path):
 
 def _task_to_item(task):
     """Convert a Todoist task to our standard item dict."""
+    due = task.get("due")
     return {
         "id": task["id"],
         "title": task.get("content", ""),
         "completed": task.get("is_completed", False),
         "completed_date": task.get("completed_at"),
         "created": task.get("created_at"),
+        "priority": task.get("priority", 1),
+        "due_date": due.get("date") if due else None,
     }
+
+
+def _sort_items(items):
+    """Sort active items: priority desc (4=p1 highest), then due date asc (no-date last)."""
+    def sort_key(item):
+        # Higher priority number = more important, so negate for descending
+        pri = -(item.get("priority") or 1)
+        # No due date sorts last
+        due = item.get("due_date") or "9999-99-99"
+        return (pri, due)
+    return sorted(items, key=sort_key)
 
 
 def _find_project_id(list_name):
@@ -140,7 +154,7 @@ def get_items(list_name):
     try:
         # Get active tasks
         active = _api_get("tasks", params={"project_id": project_id}) or []
-        items = [_task_to_item(t) for t in active]
+        items = _sort_items([_task_to_item(t) for t in active])
 
         # Get completed tasks via v1 API
         try:
@@ -160,6 +174,8 @@ def get_items(list_name):
                         "completed": True,
                         "completed_date": t.get("completed_at"),
                         "created": None,
+                        "priority": 1,
+                        "due_date": None,
                     })
         except Exception:
             pass  # completed tasks are optional

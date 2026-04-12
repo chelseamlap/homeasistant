@@ -419,6 +419,22 @@ h2.section-title:first-child { margin-top: 0; }
 .completed-group { display: none; }
 .show-completed > .completed-group { display: block; }
 
+/* Priority indicators (Todoist: 4=p1 highest, 3=p2, 2=p3) */
+.list-row.pri-4 { border-left: 3px solid var(--red); }
+.list-row.pri-3 { border-left: 3px solid var(--orange); }
+.list-row.pri-2 { border-left: 3px solid var(--accent); }
+
+/* Due date chips */
+.item-due {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.item-due.due-today { color: var(--orange); font-weight: 600; }
+.item-due.overdue { color: var(--red); font-weight: 600; }
+
 /* Add button */
 .add-btn {
   display: flex;
@@ -1393,14 +1409,24 @@ function renderList(items, containerId, listKey, opts = {}) {
   function rowHTML(item) {
     const completed = item.completed ? ' completed' : '';
     const check = item.completed ? '&#10003;' : '';
+    const priClass = item.priority > 1 ? ` pri-${item.priority}` : '';
+    let meta = '';
+    if (item.due_date && !item.completed) {
+      const d = new Date(item.due_date + 'T00:00:00');
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diff = Math.round((d - today) / 86400000);
+      const label = diff < 0 ? 'Overdue' : diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+      const dueClass = diff < 0 ? 'overdue' : diff === 0 ? 'due-today' : '';
+      meta = `<span class="item-due ${dueClass}">${label}</span>`;
+    }
     return `
-      <div class="list-row${completed}" id="row-${item.id}"
+      <div class="list-row${completed}${priClass}" id="row-${item.id}"
            onclick="toggleItem('${listKey}','${item.id}',${item.completed})"
            ontouchstart="startLongPress(event,'${listKey}','${item.id}')"
            ontouchend="cancelLongPress()"
            ontouchmove="cancelLongPress()">
         <div class="list-check">${check}</div>
-        <div class="list-text">${escHTML(item.title)}</div>
+        <div class="list-text">${escHTML(item.title)}${meta}</div>
         <button class="list-delete" onclick="event.stopPropagation();deleteItemConfirm('${listKey}','${item.id}','${escAttr(item.title)}')">&times;</button>
       </div>`;
   }
