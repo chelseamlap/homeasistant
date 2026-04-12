@@ -705,10 +705,10 @@ h2.section-title:first-child { margin-top: 0; }
 .cal-two-panel .week-col { min-height: 180px; }
 .cal-two-panel .month-day { min-height: 70px; }
 
-/* Today tab lists (side by side) */
+/* Today tab lists — adapts to count: 1=full width, 2+=side by side */
 .today-lists-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 14px;
 }
 
@@ -725,6 +725,7 @@ h2.section-title:first-child { margin-top: 0; }
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  min-height: 200px;
   max-height: 400px;
   opacity: var(--card-opacity, 1);
 }
@@ -1701,7 +1702,7 @@ async function loadToday() {
 
   // Build today-lists cards for lists with show_on_today
   const container = document.getElementById('today-lists-container');
-  const todayLists = lists.filter(l => l.show_on_today);
+  const todayLists = lists.filter(l => l.show_on_today).slice(0, 3);
   container.innerHTML = todayLists.map(l => `
     <div class="card">
       <div class="card-title">${escHTML(l.name)}</div>
