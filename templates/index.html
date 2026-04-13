@@ -331,8 +331,6 @@ h2.section-title:first-child { margin-top: 0; }
 
 /* Col 2: Hourly as rows */
 .weather-hourly-col {
-  overflow-y: auto;
-  max-height: 130px;
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
   padding: 0 10px;
@@ -355,9 +353,9 @@ h2.section-title:first-child { margin-top: 0; }
 .weather-daily-col {
   display: flex;
   gap: 4px;
-  overflow-x: auto;
   align-self: stretch;
   align-items: stretch;
+  flex-wrap: wrap;
 }
 .daily-strip-item {
   flex-shrink: 0;
@@ -720,10 +718,10 @@ h2.section-title:first-child { margin-top: 0; }
   gap: 14px;
 }
 
-/* Lists grid */
+/* Lists grid — adapts to count */
 .lists-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
 }
 .list-card {
