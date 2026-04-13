@@ -175,7 +175,6 @@ def _parse_event(event):
 def get_today_events():
     """Get all events for today from all configured calendars."""
     now = _now()
-    logger.info(f"get_today_events: now={now.isoformat()}, tz={now.tzinfo}")
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_day = start_of_day + timedelta(days=1)
     return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(start_of_day), _local_rfc3339(end_of_day), max_per_cal=50)
