@@ -1909,16 +1909,23 @@ async function saveListConfig() {
     }
   });
 
-  await api('/api/reminders/config', {
+  const result = await api('/api/reminders/config', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({lists}),
   });
 
-  // Clear cached config so next load picks up changes
+  if (!result || result.error) {
+    showToast('Failed to save list config');
+    return;
+  }
+
+  // Clear all caches so fresh data is loaded
   _listsConfig = null;
-  showUndo('List config saved — refreshing...', null);
-  setTimeout(() => location.reload(), 1500);
+  invalidateCache();
+  showToast('List config saved');
+  // Re-discover to refresh the picker in place
+  discoverLists();
 }
 
 /* ============================================================
