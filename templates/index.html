@@ -265,7 +265,27 @@ h2.section-title:first-child { margin-top: 0; }
   color: var(--text-dim);
 }
 
-/* Message board */
+/* Message board — post-it style */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap');
+
+.msg-card {
+  background: #fff9c4;
+  border: none;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.15);
+  position: relative;
+}
+.msg-card .card-title { color: #8d6e63; }
+[data-theme="dark"] .msg-card,
+:root .msg-card {
+  background: rgba(255,249,196,0.12);
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .msg-card .card-title,
+:root .msg-card .card-title { color: var(--orange); }
+[data-theme="light"] .msg-card { background: #fff9c4; }
+[data-theme="light"] .msg-card .card-title { color: #8d6e63; }
+[data-theme="warm"] .msg-card { background: rgba(255,249,196,0.2); }
+
 .msg-add-btn {
   width: 28px;
   height: 28px;
@@ -291,15 +311,24 @@ h2.section-title:first-child { margin-top: 0; }
 .msg-item:last-child { border-bottom: none; }
 .msg-text {
   flex: 1;
-  font-size: 14px;
+  font-size: 17px;
+  font-family: 'Caveat', cursive;
   color: var(--text);
-  line-height: 1.3;
+  line-height: 1.2;
 }
+[data-theme="light"] .msg-text { color: #4e342e; }
 .msg-time {
   font-size: 11px;
   color: var(--text-dim);
   white-space: nowrap;
+  font-family: var(--font);
 }
+[data-theme="light"] .msg-time { color: #a1887f; }
+.msg-card .empty-state {
+  font-family: 'Caveat', cursive;
+  font-size: 16px;
+}
+[data-theme="light"] .msg-card .empty-state { color: #bcaaa4; }
 .msg-dismiss {
   background: none;
   border: none;
@@ -1077,9 +1106,9 @@ h2.section-title:first-child { margin-top: 0; }
           </div>
 
           <!-- Message Board -->
-          <div class="card">
+          <div class="card msg-card">
             <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-              <span>Message Board</span>
+              <span>Notes</span>
               <button class="msg-add-btn" onclick="addMessage()">+</button>
             </div>
             <div id="message-board"><div class="empty-state">No messages</div></div>
