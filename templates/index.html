@@ -721,7 +721,7 @@ h2.section-title:first-child { margin-top: 0; }
 /* Lists grid — adapts to count */
 .lists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 14px;
 }
 .list-card {
@@ -1113,9 +1113,9 @@ h2.section-title:first-child { margin-top: 0; }
             </div>
           </div>
 
-          <!-- This Week's Events -->
+          <!-- Next 5 Days -->
           <div class="card">
-            <div class="card-title">This Week</div>
+            <div class="card-title">Next 5 Days</div>
             <div id="week-events" class="loading">Loading...</div>
           </div>
         </div>

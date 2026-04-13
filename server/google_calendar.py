@@ -166,12 +166,11 @@ def get_today_events():
 
 
 def get_week_events():
-    """Get all events for Monday–Sunday of the current week."""
+    """Get events for the next 5 days starting today."""
     now = datetime.now()
-    monday = now - timedelta(days=now.weekday())
-    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
-    sunday = monday + timedelta(days=7)
-    return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(monday), _local_rfc3339(sunday))
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=5)
+    return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(start), _local_rfc3339(end))
 
 
 def get_upcoming_events(days=30):
