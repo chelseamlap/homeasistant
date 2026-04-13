@@ -4,10 +4,18 @@ import os
 import json
 import glob as globmod
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from flask import Flask, render_template, jsonify, request, send_from_directory
 
 import config
+
+
+def _now():
+    """Get current time in the user's configured timezone."""
+    settings = config.load_settings()
+    tz = ZoneInfo(settings.get("timezone", config.DEFAULT_TIMEZONE))
+    return datetime.now(tz)
 from config import get_reminders_lists, get_reminders_list_name
 from server.weather import fetch_weather
 from server.reminders_bridge import (
@@ -232,7 +240,7 @@ def api_get_settings():
 def api_save_settings():
     data = request.get_json()
     settings = config.load_settings()
-    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme", "calendar_ids", "lists_backend", "weekend_sat", "weekend_sun"]:
+    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme", "calendar_ids", "lists_backend", "weekend_sat", "weekend_sun", "timezone"]:
         if key in data:
             settings[key] = data[key]
     config.save_settings(settings)
@@ -327,7 +335,7 @@ def _load_messages():
         return []
     with open(_MESSAGES_FILE) as f:
         msgs = json.load(f)
-    cutoff = (datetime.now() - __import__('datetime').timedelta(hours=24)).isoformat()
+    cutoff = (_now() - timedelta(hours=24)).isoformat()
     fresh = [m for m in msgs if m.get("ts", "") > cutoff]
     if len(fresh) != len(msgs):
         _save_messages(fresh)
@@ -351,7 +359,7 @@ def api_add_message():
     if not text:
         return jsonify({"error": "Text required"}), 400
     msgs = _load_messages()
-    msgs.append({"id": str(__import__('uuid').uuid4()), "text": text, "ts": datetime.now().isoformat()})
+    msgs.append({"id": str(__import__('uuid').uuid4()), "text": text, "ts": _now().isoformat()})
     _save_messages(msgs)
     return jsonify({"ok": True})
 
@@ -373,7 +381,7 @@ def api_refresh_all():
     from server.google_calendar import _cal_color_cache
     import server.google_calendar as gcal
     gcal._cal_color_cache = None
-    return jsonify({"ok": True, "timestamp": datetime.now().isoformat()})
+    return jsonify({"ok": True, "timestamp": _now().isoformat()})
 
 
 # ============================================================

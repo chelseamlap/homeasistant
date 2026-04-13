@@ -1,6 +1,7 @@
 """Google Calendar API integration."""
 import logging
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from googleapiclient.discovery import build
 from server.google_auth import get_credentials
 import config
@@ -8,9 +9,23 @@ import config
 logger = logging.getLogger(__name__)
 
 
+def _get_tz():
+    """Get the configured timezone."""
+    settings = config.load_settings()
+    return ZoneInfo(settings.get("timezone", config.DEFAULT_TIMEZONE))
+
+
+def _now():
+    """Get current time in the user's configured timezone."""
+    return datetime.now(_get_tz())
+
+
 def _local_rfc3339(dt):
-    """Convert a naive local datetime to RFC 3339 with UTC offset for Google Calendar API."""
-    return dt.astimezone().isoformat()
+    """Convert a datetime to RFC 3339 in the user's timezone for Google Calendar API."""
+    tz = _get_tz()
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=tz)
+    return dt.astimezone(tz).isoformat()
 
 
 def _get_service():
@@ -159,7 +174,7 @@ def _parse_event(event):
 
 def get_today_events():
     """Get all events for today from all configured calendars."""
-    now = datetime.now()
+    now = _now()
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_day = start_of_day + timedelta(days=1)
     return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(start_of_day), _local_rfc3339(end_of_day), max_per_cal=50)
@@ -167,7 +182,7 @@ def get_today_events():
 
 def get_week_events():
     """Get events for the next 5 days starting today."""
-    now = datetime.now()
+    now = _now()
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=5)
     return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(start), _local_rfc3339(end))
@@ -175,16 +190,17 @@ def get_week_events():
 
 def get_upcoming_events(days=30):
     """Get all upcoming events for the next N days."""
-    now = datetime.now()
+    now = _now()
     end = now + timedelta(days=days)
     return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(now), _local_rfc3339(end), max_per_cal=250)
 
 
 def get_month_events(year, month):
     """Get all events for a specific month."""
-    start = datetime(year, month, 1)
+    tz = _get_tz()
+    start = datetime(year, month, 1, tzinfo=tz)
     if month == 12:
-        end = datetime(year + 1, 1, 1)
+        end = datetime(year + 1, 1, 1, tzinfo=tz)
     else:
-        end = datetime(year, month + 1, 1)
+        end = datetime(year, month + 1, 1, tzinfo=tz)
     return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(start), _local_rfc3339(end), max_per_cal=300)

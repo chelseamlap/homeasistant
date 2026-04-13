@@ -11,6 +11,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 DEFAULT_LAT = 39.6133
 DEFAULT_LON = -105.0166
 DEFAULT_LOCATION_NAME = "Littleton, CO"
+DEFAULT_TIMEZONE = "America/Denver"
 
 # --- Google OAuth2 ---
 GOOGLE_CLIENT_SECRETS_FILE = os.path.join(BASE_DIR, "client_secret.json")
@@ -46,6 +47,7 @@ def load_settings():
         "longitude": DEFAULT_LON,
         "location_name": DEFAULT_LOCATION_NAME,
         "budget_sheet_id": BUDGET_SHEET_ID,
+        "timezone": DEFAULT_TIMEZONE,
     }
     if os.path.exists(path):
         with open(path) as f:
