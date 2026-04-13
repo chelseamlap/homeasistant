@@ -1898,13 +1898,14 @@ async function saveListConfig() {
 
   const lists = [];
   toggles.forEach(t => {
-    if (t.checked) {
-      const name = t.dataset.name;
+    const name = t.dataset.name;
+    const showOnToday = todayMap[name] || false;
+    if (t.checked || showOnToday) {
       const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
       lists.push({
         key: key,
         name: name,
-        show_on_today: todayMap[name] || false,
+        show_on_today: showOnToday,
       });
     }
   });
