@@ -53,6 +53,7 @@ def index():
         refresh_interval=config.REFRESH_INTERVAL_MS,
         location_name=settings["location_name"],
         google_connected=is_authenticated(),
+        configured_timezone=settings.get("timezone", config.DEFAULT_TIMEZONE),
     )
 
 

@@ -183,6 +183,11 @@ html, body {
 }
 .tab-btn:active { background: rgba(79,195,247,0.12); }
 .tab-icon { font-size: 22px; }
+.tab-refresh-btn {
+  background: none; border: none; color: var(--text-dim); font-size: 24px;
+  padding: 0 16px; cursor: pointer; flex-shrink: 0; transition: color 0.2s;
+}
+.tab-refresh-btn:active { color: var(--accent); }
 
 /* Tab content area */
 .tab-content {
@@ -1084,6 +1089,7 @@ h2.section-title:first-child { margin-top: 0; }
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
       <span class="tab-icon">&#9881;</span> Settings
     </button>
+    <button class="tab-refresh-btn" onclick="refreshAll()" title="Refresh data">&#8635;</button>
   </nav>
 
   <div class="tab-content">
@@ -1256,7 +1262,6 @@ h2.section-title:first-child { margin-top: 0; }
             </div>
             <div style="display:flex; gap:8px; margin-top:10px;">
               <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-              <button class="btn btn-outline" onclick="refreshAll()">Refresh All</button>
               <button class="btn btn-outline" onclick="exitKiosk()" style="margin-left:auto; opacity:0.5; font-size:12px;">Exit Kiosk</button>
             </div>
           </div>
@@ -1356,6 +1361,7 @@ h2.section-title:first-child { margin-top: 0; }
    GLOBALS
    ============================================================ */
 const REFRESH_MS = {{ refresh_interval }};
+const CONFIGURED_TZ = '{{ configured_timezone }}';
 let currentTab = 'today';
 let calView = 'agenda';
 let kbBuffer = '';
@@ -1483,7 +1489,7 @@ function renderEvents(events, containerId, grouped) {
       if (!byDay[key]) byDay[key] = [];
       byDay[key].push(e);
     });
-    const todayISO = localISO(new Date());
+    const todayISO = localISO(tzNow());
     for (const [dateKey, evts] of Object.entries(byDay)) {
       const d = new Date(dateKey + 'T00:00:00');
       const dayName = d.toLocaleDateString('en-US', {weekday:'short'});
@@ -1536,7 +1542,7 @@ function renderList(items, containerId, listKey, opts = {}) {
     let meta = '';
     if (item.due_date && !item.completed) {
       const d = new Date(item.due_date + 'T00:00:00');
-      const today = new Date(); today.setHours(0,0,0,0);
+      const today = tzNow(); today.setHours(0,0,0,0);
       const diff = Math.round((d - today) / 86400000);
       const label = diff < 0 ? 'Overdue' : diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
       const dueClass = diff < 0 ? 'overdue' : diff === 0 ? 'due-today' : '';
@@ -1676,11 +1682,12 @@ async function reloadList(listKey) {
    ============================================================ */
 function renderGreeting() {
   const now = new Date();
-  const hour = now.getHours();
+  const hour = parseInt(new Intl.DateTimeFormat('en-US', {timeZone: CONFIGURED_TZ, hour: 'numeric', hour12: false}).format(now));
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const dateStr = now.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric'});
+  const dateStr = now.toLocaleDateString('en-US', {timeZone: CONFIGURED_TZ, weekday: 'long', month: 'long', day: 'numeric'});
+  const timeStr = now.toLocaleTimeString('en-US', {timeZone: CONFIGURED_TZ, hour: 'numeric', minute: '2-digit'});
   document.getElementById('greeting-bar').innerHTML =
-    `<span class="greeting-text">${greeting}</span><span class="greeting-date">${dateStr}</span>`;
+    `<span class="greeting-text">${greeting}</span><span class="greeting-date">${dateStr} &bull; ${timeStr}</span>`;
 }
 
 function renderMessages(msgs) {
@@ -1999,13 +2006,25 @@ async function loadMoney() {
 /* ============================================================
    CALENDAR VIEWS
    ============================================================ */
+function tzNow() {
+  // Get current date/time parts in the configured timezone
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: CONFIGURED_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(new Date());
+  const p = {};
+  parts.forEach(x => { p[x.type] = x.value; });
+  return new Date(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`);
+}
 function localISO(d) {
+  // If called with a raw Date, convert to configured TZ first
+  if (arguments.length === 0 || d === undefined) d = tzNow();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function renderWeekView(events) {
   const el = document.getElementById('cal-week');
-  const now = new Date();
+  const now = tzNow();
   const monday = new Date(now);
   const dow = now.getDay();
   monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
@@ -2040,7 +2059,7 @@ function renderWeekView(events) {
   el.innerHTML = html;
 }
 
-let monthViewDate = new Date();
+let monthViewDate = tzNow();
 async function renderMonthView(direction) {
   if (direction === 'prev') monthViewDate.setMonth(monthViewDate.getMonth() - 1);
   if (direction === 'next') monthViewDate.setMonth(monthViewDate.getMonth() + 1);
@@ -2054,7 +2073,7 @@ async function renderMonthView(direction) {
   const lastDay = new Date(year, month, 0);
   const startWeekday = firstDay.getDay() || 7;
   const daysInMonth = lastDay.getDate();
-  const today = localISO(new Date());
+  const today = localISO(tzNow());
 
   let html = `<div class="month-nav">
     <button class="month-nav-btn" onclick="renderMonthView('prev')">&lsaquo;</button>
@@ -2093,7 +2112,7 @@ async function renderMonthView(direction) {
 let _systemThemeInterval = null;
 
 function resolveSystemTheme() {
-  const hour = new Date().getHours();
+  const hour = parseInt(new Intl.DateTimeFormat('en-US', {timeZone: CONFIGURED_TZ, hour: 'numeric', hour12: false}).format(new Date()));
   return (hour >= 20 || hour < 7) ? 'dark' : 'light';
 }
 
@@ -2196,8 +2215,12 @@ async function saveSettings() {
 async function refreshAll() {
   invalidateCache();
   await api('/api/refresh', {method: 'POST'});
-  loadToday();
-  showToast('All data refreshed');
+  if (currentTab === 'today') loadToday();
+  else if (currentTab === 'lists') loadAllLists();
+  else if (currentTab === 'calendar') loadCalendar();
+  else if (currentTab === 'money') loadMoney();
+  else if (currentTab === 'settings') loadSettings();
+  showToast('Refreshed');
 }
 
 async function exitKiosk() {
@@ -2394,6 +2417,9 @@ setInterval(() => {
   else if (currentTab === 'calendar') loadCalendar();
   else if (currentTab === 'money') loadMoney();
 }, REFRESH_MS);
+
+// Update greeting clock every 60 seconds
+setInterval(renderGreeting, 60000);
 
 </script>
 </body>

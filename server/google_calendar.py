@@ -136,18 +136,20 @@ def _parse_event(event):
     """Parse a Google Calendar event into our format."""
     start = event.get("start", {})
     end = event.get("end", {})
+    tz = _get_tz()
 
     # Handle all-day vs timed events
     if "dateTime" in start:
-        start_dt = datetime.fromisoformat(start["dateTime"])
-        end_dt = datetime.fromisoformat(end["dateTime"])
+        # Convert to local timezone so times/dates display correctly
+        start_dt = datetime.fromisoformat(start["dateTime"]).astimezone(tz)
+        end_dt = datetime.fromisoformat(end["dateTime"]).astimezone(tz)
         all_day = False
         start_str = start_dt.strftime("%-I:%M %p")
         end_str = end_dt.strftime("%-I:%M %p")
         time_display = f"{start_str} \u2013 {end_str}"
     else:
-        start_dt = datetime.strptime(start["date"], "%Y-%m-%d")
-        end_dt = datetime.strptime(end["date"], "%Y-%m-%d")
+        start_dt = datetime.strptime(start["date"], "%Y-%m-%d").replace(tzinfo=tz)
+        end_dt = datetime.strptime(end["date"], "%Y-%m-%d").replace(tzinfo=tz)
         all_day = True
         time_display = "All day"
 
