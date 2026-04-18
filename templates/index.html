@@ -357,30 +357,30 @@ h2.section-title:first-child { margin-top: 0; }
 }
 
 /* ============================================================
-   WEATHER — vertical stack: current | hourly | 7-day
+   WEATHER — current+hourly top row, 7-day strip below
    ============================================================ */
 .weather-card {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 8px 12px;
   align-items: start;
 }
 
-/* Col 1: Current conditions */
+/* Current conditions — top left */
 .weather-now {
   text-align: center;
-  min-width: 90px;
+  min-width: 80px;
 }
-.weather-icon-big { font-size: 28px; }
-.weather-temp { font-size: 26px; font-weight: 700; color: var(--text-bright); }
-.weather-details { font-size: 11px; color: var(--text-dim); line-height: 1.4; margin-top: 2px; }
+.weather-icon-big { font-size: 24px; }
+.weather-temp { font-size: 22px; font-weight: 700; color: var(--text-bright); }
+.weather-details { font-size: 10px; color: var(--text-dim); line-height: 1.4; margin-top: 2px; }
 .weather-dress { font-size: 10px; color: var(--orange); margin-top: 2px; }
 
-/* Col 2: Hourly as rows */
+/* Hourly — top right */
 .weather-hourly-col {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 0;
+  border-left: 1px solid var(--border);
+  padding: 0 0 0 10px;
 }
 .hourly-row {
   display: flex;
@@ -396,33 +396,35 @@ h2.section-title:first-child { margin-top: 0; }
 .hourly-row .h-temp { font-weight: 600; color: var(--text); min-width: 28px; text-align: right; }
 .hourly-row .h-rain { color: var(--accent); min-width: 28px; text-align: right; }
 
-/* Col 3: 7-day forecast as horizontal strip */
+/* 7-day forecast — spans full width below */
 .weather-daily-col {
+  grid-column: 1 / -1;
   display: flex;
   gap: 4px;
-  align-self: stretch;
   align-items: stretch;
   flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
 }
 .daily-strip-item {
-  flex-shrink: 0;
+  flex: 1 1 0;
   text-align: center;
-  padding: 4px 6px;
+  padding: 4px 2px;
   background: var(--bg-card-alt);
   border-radius: 6px;
-  min-width: 56px;
-  font-size: 11px;
+  min-width: 40px;
+  font-size: 10px;
   color: var(--text-dim);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
-.daily-strip-item .d-day { font-weight: 600; color: var(--text); font-size: 10px; }
-.daily-strip-item .d-icon { font-size: 14px; margin: 1px 0; }
-.daily-strip-item .d-temps { font-size: 12px; }
+.daily-strip-item .d-day { font-weight: 600; color: var(--text); font-size: 9px; }
+.daily-strip-item .d-icon { font-size: 13px; margin: 1px 0; }
+.daily-strip-item .d-temps { font-size: 11px; }
 .daily-strip-item .d-hi { font-weight: 600; color: var(--text-bright); }
 .daily-strip-item .d-lo { color: var(--text-dim); }
-.daily-strip-item .d-rain { color: var(--accent); font-size: 10px; }
+.daily-strip-item .d-rain { color: var(--accent); font-size: 9px; }
 
 /* ============================================================
    EVENT LISTS
