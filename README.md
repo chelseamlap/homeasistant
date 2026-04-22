@@ -3,6 +3,7 @@
 A touch-optimized family command center for a 24" Dell touchscreen on a Raspberry Pi 4. Five tabs: Today + This Week, Lists, Calendar, Home, Money.
 
 **New here?** Start with these guides:
+- **[See what it looks like](docs/mockup.html)** — Open in a browser to preview the dashboard UI
 - **[implementation.md](docs/implementation.md)** — Step-by-step setup from scratch (written for non-technical users)
 - **[google-setup.md](docs/google-setup.md)** — Google Calendar + Sheets setup (OAuth & service account)
 - **[updates.md](docs/updates.md)** — How to update the Pi, change settings, and request new features

@@ -12,7 +12,8 @@ A step-by-step guide to getting the family dashboard running on the Raspberry Pi
 - 24" Dell touchscreen monitor connected to the Pi
 - The Pi connected to your home Wi-Fi
 - A computer (Mac or PC) on the same network to do initial setup
-- Your Google account credentials (for Calendar and Budget)
+- Your Google account credentials (for Calendar)
+- A Google service account key (for Budget spreadsheet access)
 - Your Apple ID (optional, for Reminders sync)
 
 ---
@@ -68,7 +69,7 @@ The installer will walk you through everything:
 
 ---
 
-## Step 4: Set Up Google Calendar and Sheets
+## Step 4: Set Up Google Calendar
 
 This is the most involved step but you only do it once.
 
@@ -83,8 +84,6 @@ This is the most involved step but you only do it once.
 
 1. Go to **APIs & Services > Library** (in the left menu)
 2. Search for "Google Calendar API" and click **Enable**
-3. Search for "Google Sheets API" and click **Enable**
-4. Search for "Google Tasks API" and click **Enable**
 
 ### Create Login Credentials
 
@@ -113,7 +112,28 @@ cd ~/git-repo/home-launchpad
 python3 setup_google_oauth.py
 ```
 
-This opens a browser on the Pi. Sign in with your family Google account and allow access. The token is saved locally — you won't need to do this again unless it expires.
+This opens a browser on the Pi. Sign in with your family Google account and allow Calendar access. The token is saved locally — you won't need to do this again unless it expires.
+
+---
+
+## Step 4b: Set Up Google Sheets (Budget)
+
+The budget spreadsheet uses a separate service account for access. For the full walkthrough, see [Google Setup Guide — Part 3](google-setup.md#part-3-service-account-for-sheets).
+
+Here's the short version:
+
+1. In your Google Cloud project, go to **APIs & Services > Library**, search for "Google Sheets API", and click **Enable**
+2. Go to **IAM & Admin > Service Accounts** and create a new service account (name it something like "dashboard-sheets")
+3. Click into the service account, go to the **Keys** tab, and click **Add Key > Create new key > JSON**
+4. Rename the downloaded file to `google_service_account.json` and copy it to the Pi:
+
+```
+scp ~/Downloads/google_service_account.json your-username@your-pi-ip:~/git-repo/home-launchpad/data/
+```
+
+5. In Google Drive, create a folder for your budget spreadsheet (or use an existing one)
+6. Share that folder with the service account's email address (it looks like `name@project-id.iam.gserviceaccount.com`) — give it **Viewer** access
+7. Put your budget spreadsheet inside that shared folder
 
 ---
 
@@ -125,7 +145,7 @@ The dashboard supports multiple list/task services. On the Pi dashboard, go to *
 |---|---|---|
 | **Apple Reminders (Mac sync)** | Families already using Apple Reminders | Requires a Mac running the sync script. See [Mac Sync Setup](mac-sync-setup.md) |
 | **Todoist** | Shared lists, no Mac required | Free account at todoist.com. Get your API token from todoist.com/app/settings/integrations/developer, then save it on the Pi: `echo 'YOUR_TOKEN' > ~/git-repo/home-launchpad/data/todoist_token.txt` |
-| **Google Tasks** | Already using Google, no sharing needed | Enable the Google Tasks API in your Cloud project (same place you enabled Calendar/Sheets), then re-run `python3 setup_google_oauth.py` |
+| **Google Tasks** | Already using Google, no sharing needed | Enable the Google Tasks API in your Cloud project (same place you enabled Calendar), then re-run `python3 setup_google_oauth.py` |
 | **Local only** | Simple, no external service | Lists stored on the Pi only. No sync. |
 
 ---

@@ -41,7 +41,7 @@ These don't require any code changes — just tap on the **Home** tab:
 | Theme (with auto option) | Home > Appearance | System (auto dark/light), Dark, Light, Warm |
 | Background photo | Home > Appearance | Tap "Choose File" to upload from the Pi |
 | Location & weather | Home > Settings | Type your city, lat/lon, and tap Save |
-| Budget sheet | Home > Settings | Paste your Google Sheet ID and tap Save |
+| Budget sheet | Home > Settings | Paste your Google Sheet ID and tap Save (the sheet must be in the Drive folder shared with the service account) |
 | Lists backend | Home > Settings | Pick from dropdown: Apple Sync, Todoist, Google Tasks, Local |
 | Weekend plans | Today tab | Tap Saturday/Sunday fields — now saved to settings (survives restarts) |
 | Exit kiosk mode | Home > Settings | Tap "Exit Kiosk" to close Chrome and access the Pi desktop |
@@ -156,7 +156,7 @@ Go to **Home > Google Calendars** on the touchscreen and make sure all your cale
 Check which backend is selected in **Home > Settings > Lists Backend**:
 - **Apple Sync**: Make sure the Mac sync script is running (`cat /tmp/home-launchpad-sync.log` on the Mac)
 - **Todoist**: Verify the API token in `data/todoist_token.txt`
-- **Google Tasks**: Re-run `python3 setup_google_oauth.py` if the token expired
+- **Google Tasks**: Re-run `python3 setup_google_oauth.py` if the token expired (this handles Calendar/Tasks auth only — Sheets uses a separate service account now)
 
 ### Weather is wrong or missing
 
@@ -165,6 +165,14 @@ Go to **Home > Settings** and check that latitude/longitude are correct for your
 ### Kiosk mode — can't access the desktop
 
 Go to **Home > Settings** and tap **Exit Kiosk**. This closes Chrome so you can access the Pi desktop. To re-enter kiosk mode, reboot or run: `chromium --kiosk --password-store=basic --app=http://localhost:5000`
+
+### Budget/Money tab shows sample data
+
+Make sure the service account key file exists at `data/google_service_account.json` and that the spreadsheet is in the Drive folder shared with the service account. If the file is missing or the sheet isn't shared, the dashboard falls back to sample data.
+
+### Todoist lists missing names
+
+If you're using Todoist, each task now shows the **assigned person** next to it. If names look wrong, double-check that collaborators are set up correctly in your Todoist project.
 
 ### Lists showing old/fallback data
 
