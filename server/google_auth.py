@@ -38,17 +38,26 @@ def get_credentials():
     creds = None
 
     if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE)
+        try:
+            creds = Credentials.from_authorized_user_file(TOKEN_FILE, scopes=SCOPES)
+        except Exception as e:
+            logger.error(f"Failed to load token file: {e}")
+            return None
 
-    if creds and creds.expired and creds.refresh_token:
+    if not creds:
+        return None
+
+    # Refresh if expired or if the token is missing (invalid without being expired)
+    if (creds.expired or not creds.token) and creds.refresh_token:
         try:
             creds.refresh(Request())
             _save_token(creds)
+            logger.info("Token refreshed successfully")
         except Exception as e:
             logger.error(f"Token refresh failed: {e}")
-            creds = None
+            return None
 
-    return creds
+    return creds if creds.valid else None
 
 
 def is_authenticated():

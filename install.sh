@@ -152,6 +152,8 @@ if [[ "$AUTO_CHROME" == "y" ]]; then
     CHROME_CMD="$CHROMIUM_BIN --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --password-store=basic --app=http://localhost:5000"
     # Wait-for-port script: waits up to 30s for the dashboard to be ready
     WAIT_CMD="for i in \$(seq 1 30); do curl -s http://localhost:5000 >/dev/null 2>&1 && break; sleep 1; done"
+    # Guard: skip launch if the user exited kiosk mode (flag clears on reboot)
+    GUARD_CMD="[ ! -f /tmp/home-launchpad-kiosk-paused ]"
 
     # Clean up any old autostart entries to prevent multiple launches
     echo "→ Cleaning up old autostart entries..."
@@ -172,14 +174,14 @@ if [[ "$AUTO_CHROME" == "y" ]]; then
     if [ -f "$WAYFIRE_INI" ] && pgrep -x wayfire &>/dev/null; then
         # Wayfire (Raspberry Pi OS Bookworm+ default)
         if grep -q "\[autostart\]" "$WAYFIRE_INI"; then
-            sed -i "/\[autostart\]/a home-launchpad = bash -c '$WAIT_CMD && $CHROME_CMD'" "$WAYFIRE_INI"
+            sed -i "/\[autostart\]/a home-launchpad = bash -c '$GUARD_CMD && $WAIT_CMD && $CHROME_CMD'" "$WAYFIRE_INI"
         else
-            echo -e "\n[autostart]\nhome-launchpad = bash -c '$WAIT_CMD && $CHROME_CMD'" >> "$WAYFIRE_INI"
+            echo -e "\n[autostart]\nhome-launchpad = bash -c '$GUARD_CMD && $WAIT_CMD && $CHROME_CMD'" >> "$WAYFIRE_INI"
         fi
         echo "✓ Wayfire autostart configured (Bookworm+)"
     elif [ -d "$LXDE_DIR" ]; then
         # LXDE (older Pi OS)
-        echo "@bash -c '$WAIT_CMD && $CHROME_CMD'" >> "$LXDE_DIR/autostart"
+        echo "@bash -c '$GUARD_CMD && $WAIT_CMD && $CHROME_CMD'" >> "$LXDE_DIR/autostart"
         echo "✓ LXDE autostart configured"
     else
         # Fallback: XDG autostart
@@ -190,7 +192,7 @@ if [[ "$AUTO_CHROME" == "y" ]]; then
 Type=Application
 Name=The Home Launchpad
 Comment=Launch dashboard in Chrome kiosk mode
-Exec=bash -c '$WAIT_CMD && $CHROME_CMD'
+Exec=bash -c '$GUARD_CMD && $WAIT_CMD && $CHROME_CMD'
 X-GNOME-Autostart-enabled=true
 EOF
         echo "✓ XDG autostart configured"

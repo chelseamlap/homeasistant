@@ -355,7 +355,7 @@ h2.section-title:first-child { margin-top: 0; }
    ============================================================ */
 .weather-notes-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   gap: 12px;
   align-items: stretch;
 }
@@ -377,20 +377,21 @@ h2.section-title:first-child { margin-top: 0; }
 /* Current conditions — top left */
 .weather-now {
   text-align: center;
-  min-width: 80px;
+  min-width: 100px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  padding: 4px 8px;
 }
-.weather-icon-big { font-size: 24px; line-height: 1; }
-.weather-temp { font-size: 22px; font-weight: 700; color: var(--text-bright); }
-.weather-details { font-size: 10px; color: var(--text-dim); line-height: 1.4; margin-top: 2px; }
-.weather-dress { font-size: 10px; color: var(--orange); margin-top: 2px; }
+.weather-icon-big { font-size: 32px; line-height: 1; margin-bottom: 2px; }
+.weather-temp { font-size: 28px; font-weight: 700; color: var(--text-bright); }
+.weather-details { font-size: 12px; color: var(--text-dim); line-height: 1.4; margin-top: 4px; }
+.weather-dress { font-size: 11px; color: var(--orange); margin-top: 4px; }
 
 /* Hourly — top right */
 .weather-hourly-col {
   border-left: 1px solid var(--border);
-  padding: 0 0 0 10px;
+  padding: 0 0 0 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -398,16 +399,16 @@ h2.section-title:first-child { margin-top: 0; }
 .hourly-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 1px 0;
-  font-size: 11px;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 13px;
   color: var(--text-dim);
   white-space: nowrap;
 }
-.hourly-row .h-hour { min-width: 36px; }
-.hourly-row .h-icon { font-size: 13px; }
-.hourly-row .h-temp { font-weight: 600; color: var(--text); min-width: 28px; text-align: right; }
-.hourly-row .h-rain { color: var(--accent); min-width: 28px; text-align: right; }
+.hourly-row .h-hour { min-width: 40px; }
+.hourly-row .h-icon { font-size: 15px; }
+.hourly-row .h-temp { font-weight: 600; color: var(--text); min-width: 32px; text-align: right; }
+.hourly-row .h-rain { color: var(--accent); min-width: 32px; text-align: right; }
 
 /* 7-day forecast — spans full width below */
 .weather-daily-col {
@@ -420,23 +421,23 @@ h2.section-title:first-child { margin-top: 0; }
 }
 .daily-strip-item {
   text-align: center;
-  padding: 6px 2px;
+  padding: 8px 4px;
   background: var(--bg-card-alt);
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
 }
-.daily-strip-item .d-day { font-weight: 600; color: var(--text); font-size: 9px; }
-.daily-strip-item .d-icon { font-size: 13px; margin: 1px 0; }
-.daily-strip-item .d-temps { font-size: 11px; }
+.daily-strip-item .d-day { font-weight: 600; color: var(--text); font-size: 11px; }
+.daily-strip-item .d-icon { font-size: 16px; margin: 2px 0; }
+.daily-strip-item .d-temps { font-size: 12px; }
 .daily-strip-item .d-hi { font-weight: 600; color: var(--text-bright); }
 .daily-strip-item .d-lo { color: var(--text-dim); }
-.daily-strip-item .d-rain { color: var(--accent); font-size: 9px; }
+.daily-strip-item .d-rain { color: var(--accent); font-size: 10px; }
 
 /* ============================================================
    EVENT LISTS
@@ -1309,6 +1310,7 @@ h2.section-title:first-child { margin-top: 0; }
             <div style="display:flex; gap:8px; margin-top:10px;">
               <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
               <button class="btn btn-outline" onclick="exitKiosk()" style="margin-left:auto; opacity:0.5; font-size:12px;">Exit Kiosk</button>
+              <button class="btn btn-outline" onclick="resumeKiosk()" id="resume-kiosk-btn" style="opacity:0.5; font-size:12px; display:none;">Resume Kiosk</button>
             </div>
           </div>
         </div>
@@ -1499,28 +1501,32 @@ async function api(url, opts) {
 }
 
 /* ============================================================
-   WEATHER ICONS — colored text fallbacks for consistent rendering
+   WEATHER ICONS — inline SVG for reliable rendering everywhere
    ============================================================ */
 function wxIcon(emoji, size) {
-  const s = size || 'inherit';
-  // Map emoji to colored text symbols that render on every platform
-  const map = {
-    '☀️': {sym: '☀', color: '#FFD54F'},
-    '🌤️': {sym: '⛅', color: '#FFD54F'},
-    '⛅':  {sym: '⛅', color: '#90A4AE'},
-    '☁️': {sym: '☁', color: '#90A4AE'},
-    '🌫️': {sym: '≋',  color: '#B0BEC5'},
-    '🌦️': {sym: '🌧', color: '#64B5F6'},
-    '🌧️': {sym: '🌧', color: '#42A5F5'},
-    '🧊':  {sym: '❄',  color: '#80DEEA'},
-    '🌨️': {sym: '❄',  color: '#B3E5FC'},
-    '⛈️': {sym: '⛈',  color: '#EF5350'},
-    '🌀':  {sym: '?',  color: '#90A4AE'},
+  const s = parseInt(size) || 16;
+  // Inline SVGs that render on every platform (no emoji font needed)
+  const svgs = {
+    '☀️':  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" fill="#FFD54F"/><g stroke="#FFD54F" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.9" y2="6.9"/><line x1="17.1" y1="17.1" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.9" y2="17.1"/><line x1="17.1" y1="6.9" x2="19.1" y2="4.9"/></g></svg>`,
+    '🌤️': `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><circle cx="10" cy="9" r="3.5" fill="#FFD54F"/><g stroke="#FFD54F" stroke-width="1.5" stroke-linecap="round"><line x1="10" y1="3" x2="10" y2="4.5"/><line x1="4" y1="9" x2="5.5" y2="9"/><line x1="5.2" y1="4.8" x2="6.3" y2="5.9"/><line x1="14.8" y1="4.8" x2="13.7" y2="5.9"/></g><path d="M8 16.5h10a3.5 3.5 0 0 0 0-7 3 3 0 0 0-2.8 1.9A4.5 4.5 0 0 0 7 13a4.5 4.5 0 0 0 1 3.5z" fill="#B0BEC5"/></svg>`,
+    '⛅':  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><circle cx="10" cy="9" r="3.5" fill="#FFD54F" opacity="0.5"/><path d="M7 18h11a4 4 0 0 0 0-8 3.5 3.5 0 0 0-3-1.7A5 5 0 0 0 6 13a5 5 0 0 0 1 5z" fill="#90A4AE"/></svg>`,
+    '☁️':  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><path d="M6 18h12a4.5 4.5 0 0 0 0-9 4 4 0 0 0-3.5-2A5.5 5.5 0 0 0 5 12.5 5.5 5.5 0 0 0 6 18z" fill="#90A4AE"/></svg>`,
+    '🌫️': `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><g stroke="#B0BEC5" stroke-width="2" stroke-linecap="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="16" x2="20" y2="16"/></g></svg>`,
+    '🌦️': `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><path d="M7 14h10a3.5 3.5 0 0 0 0-7 3 3 0 0 0-2.8 1.9A4.5 4.5 0 0 0 6.5 11 3 3 0 0 0 7 14z" fill="#90A4AE"/><g stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round"><line x1="9" y1="16" x2="8" y2="20"/><line x1="14" y1="16" x2="13" y2="20"/></g></svg>`,
+    '🌧️': `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><path d="M7 13h10a3.5 3.5 0 0 0 0-7 3 3 0 0 0-2.8 1.9A4.5 4.5 0 0 0 6.5 10 3 3 0 0 0 7 13z" fill="#78909C"/><g stroke="#42A5F5" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="15" x2="7" y2="19"/><line x1="12" y1="15" x2="11" y2="19"/><line x1="16" y1="15" x2="15" y2="19"/></g></svg>`,
+    '🧊':  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><path d="M12 3 L14.5 8 L20 9.5 L16 14 L16.5 20 L12 17.5 L7.5 20 L8 14 L4 9.5 L9.5 8 Z" fill="#80DEEA" opacity="0.8"/></svg>`,
+    '🌨️': `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><path d="M7 13h10a3.5 3.5 0 0 0 0-7 3 3 0 0 0-2.8 1.9A4.5 4.5 0 0 0 6.5 10 3 3 0 0 0 7 13z" fill="#90A4AE"/><circle cx="8" cy="17" r="1.5" fill="#B3E5FC"/><circle cx="13" cy="16" r="1.5" fill="#B3E5FC"/><circle cx="17" cy="18" r="1.5" fill="#B3E5FC"/></svg>`,
+    '⛈️':  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><path d="M7 12h10a3.5 3.5 0 0 0 0-7 3 3 0 0 0-2.8 1.9A4.5 4.5 0 0 0 6.5 9 3 3 0 0 0 7 12z" fill="#78909C"/><polygon points="13,13 10,18 12,18 10,22 16,16 13,16 15,13" fill="#FFD54F"/></svg>`,
+    '🌀':  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2" fill="#90A4AE"/><path d="M12 6a6 6 0 0 1 6 6" stroke="#90A4AE" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M12 3a9 9 0 0 1 9 9" stroke="#90A4AE" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`,
   };
   const e = emoji.trim();
-  const m = map[e];
-  if (m) return `<span style="color:${m.color};font-size:${s};line-height:1">${m.sym}</span>`;
-  return `<span style="font-size:${s};line-height:1">${e}</span>`;
+  if (svgs[e]) return `<span style="display:inline-flex;vertical-align:middle;line-height:1">${svgs[e]}</span>`;
+  // Fallback: try removing variation selectors for matching
+  const stripped = e.replace(/\uFE0F/g, '');
+  for (const [key, svg] of Object.entries(svgs)) {
+    if (key.replace(/\uFE0F/g, '') === stripped) return `<span style="display:inline-flex;vertical-align:middle;line-height:1">${svg}</span>`;
+  }
+  return `<span style="font-size:${s}px;line-height:1">${e}</span>`;
 }
 
 /* ============================================================
@@ -1535,7 +1541,7 @@ function renderWeatherCurrent(w) {
   const wEl = document.getElementById('weather-current');
   wEl.className = 'weather-now';
   wEl.innerHTML = `
-    <div class="weather-icon-big">${wxIcon(c.icon, '28px')}</div>
+    <div class="weather-icon-big">${wxIcon(c.icon, '36px')}</div>
     <div class="weather-temp">${c.temp}°</div>
     <div class="weather-details">${c.desc}<br>Feels ${c.feels_like}° &middot; Wind ${c.wind}mph</div>
     <div class="weather-dress">${c.dress_rec}</div>
@@ -1544,7 +1550,7 @@ function renderWeatherCurrent(w) {
   document.getElementById('hourly-forecast').innerHTML = w.hourly.map(h => `
     <div class="hourly-row">
       <span class="h-hour">${h.hour}</span>
-      <span class="h-icon">${wxIcon(h.icon, '14px')}</span>
+      <span class="h-icon">${wxIcon(h.icon, '16px')}</span>
       <span class="h-temp">${h.temp}°</span>
       <span class="h-rain">${h.rain_pct}%</span>
     </div>
@@ -1554,7 +1560,7 @@ function renderWeatherCurrent(w) {
   document.getElementById('daily-forecast').innerHTML = w.daily.map(d => `
     <div class="daily-strip-item">
       <div class="d-day">${d.day_short}</div>
-      <div class="d-icon">${wxIcon(d.icon, '18px')}</div>
+      <div class="d-icon">${wxIcon(d.icon, '22px')}</div>
       <div class="d-temps"><span class="d-hi">${d.high}°</span> / <span class="d-lo">${d.low}°</span></div>
       <div class="d-rain">${d.rain_pct}%</div>
     </div>
@@ -1929,6 +1935,8 @@ async function loadSettings() {
     document.getElementById('google-status').innerHTML =
       `<span class="status-dot ${gc ? 'connected' : 'disconnected'}"></span> Calendar: ${gc ? 'Connected' : 'Not connected — run setup_google_oauth.py'}<br>`
       + `<span class="status-dot ${sc ? 'connected' : 'disconnected'}"></span> Sheets: ${sc ? 'Connected (service account)' : 'Not connected — add data/google_service_account.json'}`;
+    const resumeBtn = document.getElementById('resume-kiosk-btn');
+    if (resumeBtn) resumeBtn.style.display = settings.kiosk_paused ? '' : 'none';
   }
 
   // Discover available Apple Reminders lists and Google Calendars
@@ -2318,9 +2326,15 @@ async function refreshAll() {
 }
 
 async function exitKiosk() {
-  if (confirm('This will close Chrome so you can access the desktop. Reopen with:\nchromium --kiosk --app=http://localhost:5000')) {
+  if (confirm('This will close Chrome so you can access the desktop.\nKiosk will stay paused until the next reboot.\nTo resume sooner, visit http://localhost:5000 and click Resume Kiosk in Settings.')) {
     await api('/api/exit-kiosk', {method: 'POST'});
   }
+}
+
+async function resumeKiosk() {
+  await api('/api/resume-kiosk', {method: 'POST'});
+  document.getElementById('resume-kiosk-btn').style.display = 'none';
+  showToast('Kiosk will auto-launch on next reboot');
 }
 
 async function runDiagnostics() {

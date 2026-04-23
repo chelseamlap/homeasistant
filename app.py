@@ -235,6 +235,7 @@ def api_get_settings():
     settings = config.load_settings()
     settings["google_connected"] = is_authenticated()
     settings["sheets_connected"] = is_sheets_connected()
+    settings["kiosk_paused"] = os.path.exists("/tmp/home-launchpad-kiosk-paused")
     return jsonify(settings)
 
 
@@ -320,7 +321,24 @@ def serve_data_file(filename):
 def api_exit_kiosk():
     """Kill Chromium to exit kiosk mode, giving access to the desktop."""
     import subprocess as sp
+    # Write a pause flag so the autostart script won't relaunch Chrome.
+    # The flag lives in /tmp so it auto-clears on reboot.
+    try:
+        with open("/tmp/home-launchpad-kiosk-paused", "w") as f:
+            f.write("paused")
+    except OSError:
+        pass
     sp.Popen(["pkill", "-f", "chromium"])
+    return jsonify({"ok": True})
+
+
+@app.route("/api/resume-kiosk", methods=["POST"])
+def api_resume_kiosk():
+    """Remove the kiosk pause flag so autostart will work on next login/reboot."""
+    try:
+        os.remove("/tmp/home-launchpad-kiosk-paused")
+    except FileNotFoundError:
+        pass
     return jsonify({"ok": True})
 
 
@@ -389,14 +407,14 @@ def api_health():
         checks["internet"] = {"ok": False, "error": str(e)}
 
     # 2. Google OAuth token
-    from server.google_auth import get_credentials
+    from server.google_auth import get_credentials, TOKEN_FILE
     creds = get_credentials()
     if creds and creds.valid:
         checks["google_auth"] = {"ok": True, "expiry": str(creds.expiry) if creds.expiry else "unknown"}
-    elif creds and creds.expired:
-        checks["google_auth"] = {"ok": False, "error": "Token expired — re-run setup_google_oauth.py"}
+    elif os.path.exists(TOKEN_FILE):
+        checks["google_auth"] = {"ok": False, "error": "Token exists but is invalid or expired — re-run setup_google_oauth.py"}
     else:
-        checks["google_auth"] = {"ok": False, "error": "No valid token found"}
+        checks["google_auth"] = {"ok": False, "error": "No token file — run setup_google_oauth.py"}
 
     # 3. Weather
     settings = config.load_settings()
