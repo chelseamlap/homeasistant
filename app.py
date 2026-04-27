@@ -24,7 +24,7 @@ from server.reminders_bridge import (
     discover_lists,
 )
 from server.google_calendar import (
-    get_today_events, get_week_events, get_upcoming_events,
+    get_today_events, get_week_events, get_unified_week, get_upcoming_events,
     get_month_events, discover_calendars,
 )
 from server.google_sheets import get_budget_data, is_sheets_connected
@@ -179,6 +179,12 @@ def api_calendar_week():
     return jsonify(events)
 
 
+@app.route("/api/calendar/unified")
+def api_calendar_unified():
+    days = request.args.get("days", 7, type=int)
+    return jsonify(get_unified_week(days))
+
+
 @app.route("/api/calendar/upcoming")
 def api_calendar_upcoming():
     days = request.args.get("days", 30, type=int)
@@ -243,7 +249,7 @@ def api_get_settings():
 def api_save_settings():
     data = request.get_json()
     settings = config.load_settings()
-    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme", "calendar_ids", "lists_backend", "weekend_sat", "weekend_sun", "timezone"]:
+    for key in ["latitude", "longitude", "location_name", "budget_sheet_id", "reminders_lists", "theme", "calendar_ids", "lists_backend", "weekend_sat", "weekend_sun", "timezone", "chores_list", "chore_unassigned_label"]:
         if key in data:
             settings[key] = data[key]
     config.save_settings(settings)

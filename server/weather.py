@@ -1,8 +1,37 @@
 """Open-Meteo weather integration — free, no API key needed."""
+import json
+import logging
+import os
 import requests
 from datetime import datetime, timedelta
 
+logger = logging.getLogger(__name__)
+
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+_CACHE_FILE = os.path.join(DATA_DIR, "weather_cache.json")
+
+
+def _save_cache(data):
+    """Cache last good weather response."""
+    try:
+        with open(_CACHE_FILE, "w") as f:
+            json.dump({"ts": datetime.now().isoformat(), "data": data}, f)
+    except Exception:
+        pass
+
+
+def _load_cache(max_age_min=120):
+    """Load cached weather if fresh enough (default 2 hours)."""
+    try:
+        with open(_CACHE_FILE) as f:
+            cache = json.load(f)
+        age = datetime.now() - datetime.fromisoformat(cache["ts"])
+        if age.total_seconds() < max_age_min * 60:
+            return cache["data"]
+    except Exception:
+        pass
+    return None
 
 
 def _dress_recommendation(temp_f, precip_mm, wind_mph):
@@ -89,55 +118,69 @@ def fetch_weather(lat, lon):
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
+        logger.warning("Weather API request failed: %s", e)
+        cached = _load_cache()
+        if cached:
+            cached["_cached"] = True
+            return cached
         return {"error": str(e)}
 
-    current = data.get("current", {})
-    temp_f = current.get("temperature_2m", 0)
-    feels_like = current.get("apparent_temperature", 0)
-    wind = current.get("wind_speed_10m", 0)
-    precip = current.get("precipitation", 0)
-    wcode = current.get("weather_code", 0)
+    def _num(val, default=0):
+        """Safely coerce a value to a number (handles None from API)."""
+        return val if val is not None else default
+
+    # Current conditions — wrapped separately so hourly/daily still work
+    current_data = data.get("current") or {}
+    temp_f = _num(current_data.get("temperature_2m"))
+    feels_like = _num(current_data.get("apparent_temperature"))
+    wind = _num(current_data.get("wind_speed_10m"))
+    precip = _num(current_data.get("precipitation"))
+    wcode = _num(current_data.get("weather_code"))
 
     # Hourly — next 8 hours
-    hourly = data.get("hourly", {})
+    hourly = data.get("hourly") or {}
     now_hour = datetime.now().hour
     hourly_forecast = []
-    times = hourly.get("time", [])
+    h_temps = hourly.get("temperature_2m") or []
+    h_rain = hourly.get("precipitation_probability") or []
+    h_codes = hourly.get("weather_code") or []
+    times = hourly.get("time") or []
     for i, t in enumerate(times):
+        if len(hourly_forecast) >= 8:
+            break
         h = int(t.split("T")[1].split(":")[0])
         d = t.split("T")[0]
-        if d == datetime.now().strftime("%Y-%m-%d") and h >= now_hour and len(hourly_forecast) < 8:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        if (d == today_str and h >= now_hour) or d > today_str:
             hourly_forecast.append({
                 "hour": datetime.strptime(t, "%Y-%m-%dT%H:%M").strftime("%-I%p").lower(),
-                "temp": round(hourly["temperature_2m"][i]),
-                "rain_pct": hourly.get("precipitation_probability", [0]*len(times))[i] or 0,
-                "icon": _wmo_to_icon(hourly.get("weather_code", [0]*len(times))[i]),
-            })
-        elif d > datetime.now().strftime("%Y-%m-%d") and len(hourly_forecast) < 8:
-            hourly_forecast.append({
-                "hour": datetime.strptime(t, "%Y-%m-%dT%H:%M").strftime("%-I%p").lower(),
-                "temp": round(hourly["temperature_2m"][i]),
-                "rain_pct": hourly.get("precipitation_probability", [0]*len(times))[i] or 0,
-                "icon": _wmo_to_icon(hourly.get("weather_code", [0]*len(times))[i]),
+                "temp": round(_num(h_temps[i] if i < len(h_temps) else 0)),
+                "rain_pct": _num(h_rain[i] if i < len(h_rain) else 0),
+                "icon": _wmo_to_icon(_num(h_codes[i] if i < len(h_codes) else 0)),
             })
 
     # Daily — 7-day forecast
-    daily = data.get("daily", {})
+    daily = data.get("daily") or {}
     daily_forecast = []
-    for i, d in enumerate(daily.get("time", [])):
+    d_times = daily.get("time") or []
+    d_highs = daily.get("temperature_2m_max") or []
+    d_lows = daily.get("temperature_2m_min") or []
+    d_rain = daily.get("precipitation_probability_max") or []
+    d_codes = daily.get("weather_code") or []
+    for i, d in enumerate(d_times):
         dt = datetime.strptime(d, "%Y-%m-%d")
         daily_forecast.append({
             "date": d,
             "day_name": dt.strftime("%A"),
             "day_short": dt.strftime("%a"),
-            "high": round(daily["temperature_2m_max"][i]),
-            "low": round(daily["temperature_2m_min"][i]),
-            "rain_pct": daily.get("precipitation_probability_max", [0]*7)[i] or 0,
-            "icon": _wmo_to_icon(daily.get("weather_code", [0]*7)[i]),
-            "desc": _wmo_to_desc(daily.get("weather_code", [0]*7)[i]),
+            "high": round(_num(d_highs[i] if i < len(d_highs) else 0)),
+            "low": round(_num(d_lows[i] if i < len(d_lows) else 0)),
+            "rain_pct": _num(d_rain[i] if i < len(d_rain) else 0),
+            "icon": _wmo_to_icon(_num(d_codes[i] if i < len(d_codes) else 0)),
+            "desc": _wmo_to_desc(_num(d_codes[i] if i < len(d_codes) else 0)),
         })
 
-    return {
+    result = {
         "current": {
             "temp": round(temp_f),
             "feels_like": round(feels_like),
@@ -150,3 +193,5 @@ def fetch_weather(lat, lon):
         "hourly": hourly_forecast,
         "daily": daily_forecast,
     }
+    _save_cache(result)
+    return result

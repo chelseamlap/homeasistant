@@ -47,6 +47,8 @@ def load_settings():
         "location_name": DEFAULT_LOCATION_NAME,
         "budget_sheet_id": BUDGET_SHEET_ID,
         "timezone": DEFAULT_TIMEZONE,
+        "chores_list": "chores",
+        "chore_unassigned_label": "Home",
     }
     if os.path.exists(path):
         with open(path) as f:

@@ -89,12 +89,14 @@ def _task_to_item(task, collaborators=None):
     return {
         "id": task["id"],
         "title": task.get("content", ""),
+        "description": task.get("description", ""),
         "completed": task.get("is_completed") or task.get("checked", False),
         "completed_date": task.get("completed_at"),
         "created": task.get("created_at") or task.get("added_at"),
         "priority": task.get("priority", 1),
         "due_date": due.get("date") if due else None,
         "assignee": assignee,
+        "labels": task.get("labels") or [],
         "order": task.get("order") or task.get("child_order", 0),
     }
 

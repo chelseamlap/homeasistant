@@ -190,6 +190,39 @@ def get_week_events():
     return _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(start), _local_rfc3339(end))
 
 
+def get_unified_week(days=7):
+    """Get events for the next N days, grouped by day with empty days included.
+
+    Returns a list of dicts:
+      [{"date": "2026-04-27", "day_short": "Sun", "day_long": "Sunday",
+        "date_display": "Apr 27", "is_today": True, "events": [...]}, ...]
+    """
+    now = _now()
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=days)
+    events = _fetch_events_multi(_get_calendar_ids(), _local_rfc3339(start), _local_rfc3339(end))
+
+    # Group events by date
+    events_by_date = {}
+    for e in events:
+        events_by_date.setdefault(e["date"], []).append(e)
+
+    today_str = now.strftime("%Y-%m-%d")
+    result = []
+    for i in range(days):
+        d = start + timedelta(days=i)
+        date_str = d.strftime("%Y-%m-%d")
+        result.append({
+            "date": date_str,
+            "day_short": d.strftime("%a"),
+            "day_long": d.strftime("%A"),
+            "date_display": d.strftime("%b %-d"),
+            "is_today": date_str == today_str,
+            "events": events_by_date.get(date_str, []),
+        })
+    return result
+
+
 def get_upcoming_events(days=30):
     """Get all upcoming events for the next N days."""
     now = _now()

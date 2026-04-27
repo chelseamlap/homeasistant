@@ -243,8 +243,32 @@ h2.section-title {
 h2.section-title:first-child { margin-top: 0; }
 
 /* ============================================================
-   TWO COLUMN (Today + This Week)
+   TODAY LAYOUT — three columns + full-width chores
    ============================================================ */
+.today-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.today-top-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr;
+  gap: 14px;
+  min-height: 0;
+}
+.today-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#panel-today.active { display: flex; flex-direction: column; overflow-y: hidden; }
+
+/* Legacy two-col kept for other uses */
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -256,8 +280,6 @@ h2.section-title:first-child { margin-top: 0; }
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-#panel-today.active { display: flex; flex-direction: column; overflow-y: hidden; }
-#panel-today .two-col { flex: 1; min-height: 0; }
 
 /* Greeting bar */
 .greeting-bar {
@@ -277,35 +299,42 @@ h2.section-title:first-child { margin-top: 0; }
   color: var(--text-dim);
 }
 
-/* Message board — post-it style */
+/* Sticky Note */
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap');
 
-.msg-card {
+.sticky-note {
   background: #fff9c4;
   border: none;
-  box-shadow: 2px 3px 8px rgba(0,0,0,0.15);
+  border-radius: 2px;
+  padding: 14px 16px;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.04);
   position: relative;
+  transform: rotate(-0.5deg);
+  flex: 1;
 }
-.msg-card .card-title { color: #8d6e63; }
-[data-theme="dark"] .msg-card,
-:root .msg-card {
-  background: rgba(255,249,196,0.12);
-  box-shadow: 2px 3px 8px rgba(0,0,0,0.3);
+.sticky-tape {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 14px;
+  background: rgba(200,200,180,0.5);
+  border-radius: 1px;
 }
-[data-theme="dark"] .msg-card .card-title,
-:root .msg-card .card-title { color: var(--orange); }
-[data-theme="light"] .msg-card { background: #fff9c4; }
-[data-theme="light"] .msg-card .card-title { color: #8d6e63; }
-[data-theme="warm"] .msg-card { background: rgba(255,249,196,0.2); }
-
+.sticky-note .card-title {
+  color: #5d4037;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
 .msg-add-btn {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: none;
-  background: var(--accent);
-  color: #000;
-  font-size: 18px;
+  background: rgba(141,110,99,0.2);
+  color: #5d4037;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -317,50 +346,35 @@ h2.section-title:first-child { margin-top: 0; }
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 .msg-item:last-child { border-bottom: none; }
 .msg-text {
   flex: 1;
-  font-size: 17px;
+  font-size: 15px;
   font-family: 'Caveat', cursive;
-  color: var(--text);
-  line-height: 1.2;
+  color: #5d4037;
+  line-height: 1.3;
 }
-[data-theme="light"] .msg-text { color: #4e342e; }
 .msg-time {
-  font-size: 11px;
-  color: var(--text-dim);
+  font-size: 10px;
+  color: #a1887f;
   white-space: nowrap;
   font-family: var(--font);
 }
-[data-theme="light"] .msg-time { color: #a1887f; }
-.msg-card .empty-state {
+.sticky-note .empty-state {
   font-family: 'Caveat', cursive;
   font-size: 16px;
+  color: #bcaaa4;
 }
-[data-theme="light"] .msg-card .empty-state { color: #bcaaa4; }
 .msg-dismiss {
   background: none;
   border: none;
-  color: var(--text-dim);
+  color: #a1887f;
   font-size: 14px;
   cursor: pointer;
   padding: 0 4px;
-}
-
-/* ============================================================
-   WEATHER + NOTES — side by side row
-   ============================================================ */
-.weather-notes-row {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 12px;
-  align-items: stretch;
-}
-.weather-notes-row .msg-card {
-  min-height: 0;
 }
 
 /* ============================================================
@@ -503,6 +517,131 @@ h2.section-title:first-child { margin-top: 0; }
 }
 
 /* ============================================================
+   UNIFIED CALENDAR (7-day strip)
+   ============================================================ */
+.unified-cal-day {
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-left: 3px solid transparent;
+}
+.unified-cal-day.is-today {
+  background: rgba(from var(--accent) r g b / 0.08);
+  border-left-color: var(--accent);
+  border-radius: 4px;
+}
+.unified-cal-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.unified-cal-day-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.unified-cal-day.is-today .unified-cal-day-name {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+}
+.unified-cal-day-date {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.unified-cal-events {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.unified-cal-event {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 2px;
+  align-items: baseline;
+}
+.unified-cal-event-time {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.unified-cal-event-summary {
+  color: var(--text);
+}
+.unified-cal-event-guests {
+  color: var(--visitor);
+  font-size: 11px;
+}
+.unified-cal-empty {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 3px;
+}
+
+/* ============================================================
+   CHORE WIDGET (swim lanes)
+   ============================================================ */
+.chore-widget {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow, none);
+  padding: 12px;
+}
+.chore-widget .card-title { margin-bottom: 10px; }
+.chore-lanes {
+  display: flex;
+  gap: 12px;
+}
+.chore-lane {
+  flex: 1;
+  min-width: 0;
+}
+.chore-lane-header {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid currentColor;
+  opacity: 0.8;
+}
+.chore-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.chore-row:active { opacity: 0.7; }
+.chore-row.completed { opacity: 0.4; }
+.chore-row.completed .chore-title { text-decoration: line-through; }
+.chore-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-dim);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  margin-top: 2px;
+}
+.chore-row.completed .chore-check {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--bg);
+}
+.chore-content { flex: 1; min-width: 0; }
+.chore-title { font-size: 12px; color: var(--text); }
+.chore-desc { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+.chore-due { font-size: 9px; white-space: nowrap; color: var(--text-dim); margin-top: 2px; }
+.chore-due.due-today { color: var(--orange); font-weight: 600; }
+
+/* ============================================================
    CHORE / LIST ROWS
    ============================================================ */
 .list-row {
@@ -606,14 +745,33 @@ h2.section-title:first-child { margin-top: 0; }
 .item-assignee {
   display: inline-block;
   font-size: 10px;
-  color: var(--accent);
   margin-left: 8px;
   vertical-align: middle;
-  background: rgba(from var(--accent) r g b / 0.12);
   padding: 1px 7px;
   border-radius: 10px;
   font-weight: 600;
   letter-spacing: 0.3px;
+}
+.item-label {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: 6px;
+  vertical-align: middle;
+  background: rgba(128,128,128,0.12);
+  padding: 1px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+}
+.item-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.3;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Add button */
@@ -1148,21 +1306,23 @@ h2.section-title:first-child { margin-top: 0; }
          TAB 1: TODAY + THIS WEEK
          ============================================================ -->
     <div class="tab-panel active" id="panel-today">
-      <!-- Date/greeting banner spans full width above columns -->
+      <!-- Date/greeting banner -->
       <div class="greeting-bar" id="greeting-bar"></div>
 
-      <div class="two-col">
-        <!-- LEFT: TODAY -->
-        <div class="col" id="today-left">
-          <!-- Weather + Notes side by side -->
-          <div class="weather-notes-row">
+      <div class="today-grid">
+        <!-- Three columns: Weather+Sticky | Lists | Calendar -->
+        <div class="today-top-row">
+
+          <!-- LEFT: Weather + Sticky Note -->
+          <div class="today-col">
             <div class="card weather-card" id="weather-current-card">
               <div id="weather-current" class="loading">Loading...</div>
               <div id="hourly-forecast" class="weather-hourly-col"></div>
               <div id="daily-forecast" class="weather-daily-col"></div>
             </div>
 
-            <div class="card msg-card">
+            <div class="sticky-note">
+              <div class="sticky-tape"></div>
               <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>Notes</span>
                 <button class="msg-add-btn" onclick="addMessage()">+</button>
@@ -1171,38 +1331,26 @@ h2.section-title:first-child { margin-top: 0; }
             </div>
           </div>
 
-          <!-- Today lists (populated dynamically from lists with show_on_today) -->
-          <div id="today-lists-container" class="today-lists-grid"></div>
-
-        </div>
-
-        <!-- RIGHT: THIS WEEK -->
-        <div class="col" id="today-right">
-          <!-- Today's Schedule -->
-          <div class="card">
-            <div class="card-title">Today's Schedule</div>
-            <div id="today-events" class="loading">Loading calendar...</div>
+          <!-- CENTER: Today Lists (show_on_today) -->
+          <div class="today-col">
+            <div id="today-lists-container" class="today-lists-grid"></div>
           </div>
 
-          <!-- Weekend Plans -->
-          <div class="card">
-            <div class="card-title">Weekend Plans</div>
-            <div class="weekend-row">
-              <div class="weekend-col">
-                <div class="intention-label">Saturday</div>
-                <div class="intention-field" id="intention-sat" onclick="editIntention('sat')"></div>
-              </div>
-              <div class="weekend-col">
-                <div class="intention-label">Sunday</div>
-                <div class="intention-field" id="intention-sun" onclick="editIntention('sun')"></div>
-              </div>
+          <!-- RIGHT: Unified 7-Day Calendar -->
+          <div class="today-col">
+            <div class="card" style="flex:1;">
+              <div class="card-title">This Week</div>
+              <div id="unified-calendar" class="loading">Loading calendar...</div>
             </div>
           </div>
 
-          <!-- Next 5 Days -->
-          <div class="card">
-            <div class="card-title">Next 5 Days</div>
-            <div id="week-events" class="loading">Loading...</div>
+        </div>
+
+        <!-- FULL WIDTH: Chores Widget -->
+        <div class="chore-widget" id="chore-widget">
+          <div class="card-title">Chores</div>
+          <div class="chore-lanes" id="chore-lanes">
+            <div class="empty-state">Loading chores...</div>
           </div>
         </div>
       </div>
@@ -1307,6 +1455,11 @@ h2.section-title:first-child { margin-top: 0; }
               </select>
             </div>
             <div id="backend-setup-hint" style="font-size:0.8em; opacity:0.6; padding:4px 0;"></div>
+            <div class="settings-row">
+              <span class="settings-label">Chores List</span>
+              <input class="settings-input" id="setting-chores-list" type="text" placeholder="Todoist project key (e.g. chores)">
+            </div>
+            <div style="font-size:0.8em; opacity:0.6; padding:4px 0;">The URL key of the Todoist project to show in the chore widget on the Today tab.</div>
             <div class="settings-row">
               <span class="settings-label">Google</span>
               <span id="google-status"></span>
@@ -1628,8 +1781,154 @@ function eventHTML(e) {
 }
 
 /* ============================================================
+   UNIFIED CALENDAR RENDERING
+   ============================================================ */
+function renderUnifiedCalendar(days) {
+  const el = document.getElementById('unified-calendar');
+  if (!days || !days.length) {
+    el.innerHTML = '<div class="empty-state">No calendar data</div>';
+    return;
+  }
+  el.innerHTML = days.map(day => {
+    const dayClass = day.is_today ? ' is-today' : '';
+    const dayLabel = day.is_today ? 'Today' : day.day_short;
+    let eventsHtml;
+    if (day.events.length === 0) {
+      eventsHtml = '<div class="unified-cal-empty">No events</div>';
+    } else {
+      eventsHtml = day.events.map(e => {
+        const guests = e.has_guests && e.guests && e.guests.length
+          ? `<span class="unified-cal-event-guests">${e.guests.join(', ')}</span>` : '';
+        return `<div class="unified-cal-event">
+          <span class="unified-cal-event-time">${e.time_display === 'All day' ? 'All day' : e.time_display.split(' – ')[0]}</span>
+          <span class="unified-cal-event-summary">${escHTML(e.summary)}</span>
+          ${guests}
+        </div>`;
+      }).join('');
+    }
+    return `<div class="unified-cal-day${dayClass}">
+      <div class="unified-cal-day-header">
+        <span class="unified-cal-day-name">${dayLabel}</span>
+        <span class="unified-cal-day-date">${day.date_display}</span>
+      </div>
+      <div class="unified-cal-events">${eventsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   CHORE WIDGET RENDERING
+   ============================================================ */
+let _choreSettings = null;
+
+function getChoreColor(assignee) {
+  if (!assignee) return '#888';
+  return getAssigneeColor(assignee);
+}
+
+function getChoreLabel(assignee) {
+  if (!assignee) return (_choreSettings && _choreSettings.chore_unassigned_label) || 'Home';
+  return assignee;
+}
+
+function choreDueBucket(dueDate) {
+  if (!dueDate) return {label: '', cls: ''};
+  const d = new Date(dueDate + 'T00:00:00');
+  const today = tzNow(); today.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff <= 0) return {label: 'Today', cls: 'due-today'};
+  // "This week" = within the next 6 days (rest of the current week)
+  if (diff <= 6) return {label: 'This week', cls: ''};
+  return {label: 'Next week', cls: ''};
+}
+
+function renderChores(items, listKey) {
+  const el = document.getElementById('chore-lanes');
+  if (!items || items.length === 0) {
+    el.innerHTML = '<div class="empty-state">No chores due</div>';
+    return;
+  }
+
+  // Filter to items due within 14 days
+  const today = tzNow(); today.setHours(0,0,0,0);
+  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() + 14);
+  const filtered = items.filter(item => {
+    if (item.completed) return true; // show completed in their lane
+    if (!item.due_date) return true; // no due date = always show
+    const d = new Date(item.due_date + 'T00:00:00');
+    return d <= cutoff;
+  });
+
+  // Sort into lanes by assignee (dynamically discovered from items)
+  const lanes = {};
+  const unassignedLabel = (_choreSettings && _choreSettings.chore_unassigned_label) || 'Home';
+
+  filtered.forEach(item => {
+    const label = getChoreLabel(item.assignee);
+    if (!lanes[label]) lanes[label] = {color: item.assignee ? getChoreColor(item.assignee) : '#888', items: []};
+    lanes[label].items.push(item);
+  });
+
+  if (!lanes[unassignedLabel]) lanes[unassignedLabel] = {color: '#888', items: []};
+
+  // Order: named people first (sorted), then Home
+  const laneOrder = Object.keys(lanes).filter(k => k !== unassignedLabel).sort();
+  laneOrder.push(unassignedLabel);
+
+  el.innerHTML = laneOrder.map(laneName => {
+    const lane = lanes[laneName];
+    const active = lane.items.filter(i => !i.completed);
+    const done = lane.items.filter(i => i.completed);
+
+    let html = active.map(item => {
+      const due = choreDueBucket(item.due_date);
+      const desc = item.description ? `<div class="chore-desc">${escHTML(item.description)}</div>` : '';
+      return `<div class="chore-row" onclick="toggleItem('${listKey}','${item.id}',false)"
+                   style="background:${lane.color}0a">
+        <div class="chore-check"></div>
+        <div class="chore-content">
+          <div class="chore-title">${escHTML(item.title)}</div>
+          ${desc}
+        </div>
+        ${due.label ? `<div class="chore-due ${due.cls}">${due.label}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    if (done.length) {
+      html += `<div class="completed-divider" onclick="this.parentNode.classList.toggle('show-completed')">
+        <span class="completed-chevron">&#9656;</span> Done (${done.length})
+      </div>`;
+      html += `<div class="completed-group">${done.map(item =>
+        `<div class="chore-row completed" onclick="toggleItem('${listKey}','${item.id}',true)">
+          <div class="chore-check">&#10003;</div>
+          <div class="chore-content"><div class="chore-title">${escHTML(item.title)}</div></div>
+        </div>`
+      ).join('')}</div>`;
+    }
+
+    return `<div class="chore-lane">
+      <div class="chore-lane-header" style="color:${lane.color};border-bottom-color:${lane.color}40">${escHTML(laneName)}</div>
+      ${html || '<div class="empty-state" style="font-size:11px;">All clear!</div>'}
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
    LIST RENDERING
    ============================================================ */
+const ASSIGNEE_COLOR_PALETTE = ['#9c27b0', '#2196f3', '#4caf50', '#ff7043'];
+const _assigneeColorMap = {};
+let _assigneeColorIdx = 0;
+function getAssigneeColor(name) {
+  if (!name) return '#888';
+  const lower = name.toLowerCase();
+  if (!_assigneeColorMap[lower]) {
+    _assigneeColorMap[lower] = ASSIGNEE_COLOR_PALETTE[_assigneeColorIdx % ASSIGNEE_COLOR_PALETTE.length];
+    _assigneeColorIdx++;
+  }
+  return _assigneeColorMap[lower];
+}
+
 function renderList(items, containerId, listKey, opts = {}) {
   const el = document.getElementById(containerId);
   if (!items || items.length === 0) {
@@ -1654,8 +1953,14 @@ function renderList(items, containerId, listKey, opts = {}) {
       meta = `<span class="item-due ${dueClass}">${label}</span>`;
     }
     if (item.assignee) {
-      meta += `<span class="item-assignee">${escHTML(item.assignee)}</span>`;
+      const assigneeColor = getAssigneeColor(item.assignee);
+      meta += `<span class="item-assignee" style="color:${assigneeColor};background:${assigneeColor}1f">${escHTML(item.assignee)}</span>`;
     }
+    if (item.labels && item.labels.length) {
+      meta += item.labels.map(l => `<span class="item-label">${escHTML(l)}</span>`).join('');
+    }
+    const desc = item.description && !item.completed
+      ? `<div class="item-desc">${escHTML(item.description)}</div>` : '';
     return `
       <div class="list-row${completed}${priClass}" id="row-${item.id}"
            onclick="toggleItem('${listKey}','${item.id}',${item.completed})"
@@ -1663,7 +1968,7 @@ function renderList(items, containerId, listKey, opts = {}) {
            ontouchend="cancelLongPress()"
            ontouchmove="cancelLongPress()">
         <div class="list-check">${check}</div>
-        <div class="list-text">${escHTML(item.title)}${meta}</div>
+        <div class="list-text">${escHTML(item.title)}${meta}${desc}</div>
         <button class="list-delete" onclick="event.stopPropagation();deleteItemConfirm('${listKey}','${item.id}','${escAttr(item.title)}')">&times;</button>
       </div>`;
   }
@@ -1783,6 +2088,11 @@ async function reloadList(listKey) {
   // Update in Today tab
   const todayEl = document.getElementById('today-' + listKey);
   if (todayEl) renderList(data.items, 'today-' + listKey, listKey);
+  // Update chore widget if this is the chores list
+  const choresKey = _choreSettings && _choreSettings.chores_list;
+  if (choresKey && listKey === choresKey) {
+    renderChores(data.items, listKey);
+  }
 }
 
 /* ============================================================
@@ -1801,7 +2111,7 @@ function renderGreeting() {
 function renderMessages(msgs) {
   const el = document.getElementById('message-board');
   if (!msgs || !msgs.length) {
-    el.innerHTML = '<div class="empty-state">No messages</div>';
+    el.innerHTML = '<div class="empty-state">Tap + to add a note</div>';
     return;
   }
   el.innerHTML = msgs.map(m => {
@@ -1863,35 +2173,38 @@ async function loadToday() {
   `).join('');
 
   // Fetch data in parallel
+  const settings = await api('/api/settings');
+  _choreSettings = settings;
+  const choresKey = (settings && settings.chores_list) || null;
+
   const fetches = [
     api('/api/weather'),
-    api('/api/calendar/today'),
-    api('/api/calendar/week'),
-    api('/api/settings'),
+    api('/api/calendar/unified'),
     api('/api/messages'),
     ...todayLists.map(l => api(`/api/reminders/${l.key}`)),
   ];
+  if (choresKey) fetches.push(api(`/api/reminders/${choresKey}`));
   const results = await Promise.all(fetches);
 
   const weather = results[0];
-  const todayEvents = results[1];
-  const weekEvents = results[2];
-  const weekendSettings = results[3];
-  const messages = results[4];
-  const listResults = results.slice(5);
+  const unifiedCal = results[1];
+  const messages = results[2];
+  const listResults = results.slice(3, 3 + todayLists.length);
+  const choresData = choresKey ? results[results.length - 1] : null;
 
   renderWeatherCurrent(weather);
-  renderEvents(todayEvents, 'today-events', false);
-  renderEvents(weekEvents, 'week-events', true);
+  renderUnifiedCalendar(unifiedCal);
   renderMessages(messages);
 
   todayLists.forEach((l, i) => {
     if (listResults[i]) renderList(listResults[i].items, 'today-' + l.key, l.key);
   });
 
-  if (weekendSettings) {
-    document.getElementById('intention-sat').textContent = weekendSettings.weekend_sat || 'Tap to add plans...';
-    document.getElementById('intention-sun').textContent = weekendSettings.weekend_sun || 'Tap to add plans...';
+  if (choresData && choresData.items) {
+    renderChores(choresData.items, choresKey);
+  } else if (!choresKey) {
+    document.getElementById('chore-lanes').innerHTML =
+      '<div class="empty-state">Set a chores list in Settings to enable this widget</div>';
   }
 }
 
@@ -1989,6 +2302,7 @@ async function loadSettings() {
     document.getElementById('setting-lat').value = settings.latitude || '';
     document.getElementById('setting-lon').value = settings.longitude || '';
     document.getElementById('setting-sheet').value = settings.budget_sheet_id || '';
+    document.getElementById('setting-chores-list').value = settings.chores_list || '';
     document.getElementById('setting-theme').value = localStorage.getItem('dashboard-theme') || settings.theme || 'light';
     const backendSel = document.getElementById('setting-lists-backend');
     backendSel.value = settings.lists_backend || 'apple_sync';
@@ -2372,6 +2686,7 @@ async function saveSettings() {
       budget_sheet_id: document.getElementById('setting-sheet').value,
       theme: theme,
       lists_backend: document.getElementById('setting-lists-backend').value,
+      chores_list: document.getElementById('setting-chores-list').value || '',
     })
   });
   invalidateCache();  // settings change can affect weather, lists, etc.
