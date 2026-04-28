@@ -248,7 +248,7 @@ h2.section-title:first-child { margin-top: 0; }
 .today-grid {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -257,14 +257,14 @@ h2.section-title:first-child { margin-top: 0; }
 .today-top-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1.3fr;
-  gap: 14px;
+  gap: 16px;
   min-height: 0;
 }
 .today-col {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 #panel-today.active { display: flex; flex-direction: column; overflow-y: hidden; }
 
@@ -520,19 +520,20 @@ h2.section-title:first-child { margin-top: 0; }
    UNIFIED CALENDAR (7-day strip)
    ============================================================ */
 .unified-cal-day {
-  padding: 6px 10px;
-  margin-bottom: 4px;
+  padding: 7px 10px;
+  margin-bottom: 5px;
   border-left: 3px solid transparent;
+  border-radius: 4px;
 }
 .unified-cal-day.is-today {
-  background: rgba(from var(--accent) r g b / 0.08);
+  background: rgba(from var(--accent) r g b / 0.13);
   border-left-color: var(--accent);
-  border-radius: 4px;
+  border-left-width: 4px;
 }
 .unified-cal-day-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
 }
 .unified-cal-day-name {
   font-size: 12px;
@@ -541,12 +542,22 @@ h2.section-title:first-child { margin-top: 0; }
 }
 .unified-cal-day.is-today .unified-cal-day-name {
   color: var(--accent);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 .unified-cal-day-date {
   font-size: 11px;
   color: var(--text-dim);
+}
+.unified-cal-day.is-today .unified-cal-day-date {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
 }
 .unified-cal-events {
   margin-top: 4px;
@@ -586,12 +597,12 @@ h2.section-title:first-child { margin-top: 0; }
   border-radius: var(--radius);
   border: 1px solid var(--border);
   box-shadow: var(--card-shadow, none);
-  padding: 12px;
+  padding: 14px 16px;
 }
-.chore-widget .card-title { margin-bottom: 10px; }
+.chore-widget .card-title { margin-bottom: 12px; }
 .chore-lanes {
   display: flex;
-  gap: 12px;
+  gap: 16px;
 }
 .chore-lane {
   flex: 1;
@@ -599,19 +610,21 @@ h2.section-title:first-child { margin-top: 0; }
 }
 .chore-lane-header {
   font-weight: 700;
-  font-size: 12px;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
   border-bottom: 2px solid currentColor;
-  opacity: 0.8;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .chore-row {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  border-radius: 5px;
-  padding: 6px 8px;
-  margin-bottom: 4px;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -619,15 +632,15 @@ h2.section-title:first-child { margin-top: 0; }
 .chore-row.completed { opacity: 0.4; }
 .chore-row.completed .chore-title { text-decoration: line-through; }
 .chore-check {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 2px solid var(--accent-dim);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 2px;
 }
 .chore-row.completed .chore-check {
@@ -636,10 +649,10 @@ h2.section-title:first-child { margin-top: 0; }
   color: var(--bg);
 }
 .chore-content { flex: 1; min-width: 0; }
-.chore-title { font-size: 12px; color: var(--text); }
-.chore-desc { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
-.chore-due { font-size: 9px; white-space: nowrap; color: var(--text-dim); margin-top: 2px; }
-.chore-due.due-today { color: var(--orange); font-weight: 600; }
+.chore-title { font-size: 13px; color: var(--text); font-weight: 500; line-height: 1.3; }
+.chore-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.3; }
+.chore-due { font-size: 10px; white-space: nowrap; color: var(--text-dim); margin-top: 3px; font-weight: 500; }
+.chore-due.due-today { color: var(--orange); font-weight: 700; }
 
 /* ============================================================
    CHORE / LIST ROWS
